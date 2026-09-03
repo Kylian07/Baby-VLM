@@ -211,12 +211,27 @@ class LearnerConfig:
     null_prior: float = 0.3
     kappa: float = 0.0
     gamma: float = 1.0
-    """Lexicon EMA rate.  1.0 = perfect memory; < 1 models forgetting and is the
-    single free parameter fitted to human Yu & Smith accuracy."""
+    """Fraction of accumulated lexicon evidence *retained* per trial.
+
+    1.0 = perfect memory.  Lower values model forgetting, and this is the single
+    free parameter fitted to human Yu & Smith accuracy.  Matches the retention
+    convention in ``gavagai.lexicon`` (multiply by gamma), which an earlier
+    version of this file inverted."""
     feedback: float = 1.0
     smoothing: float = 0.1
     use_null: bool = True
     readout: str = "pmi"
+
+    attend_k: int | None = None
+    """Maximum objects (and words) the learner actually encodes on a trial.
+
+    An unconstrained ideal observer solves Yu & Smith's design at ceiling for
+    every memory-decay rate, so forgetting is the wrong capacity limit.  The
+    account that does predict the human pattern is limited *encoding*: a learner
+    registers only a couple of the word-object pairs available on each trial
+    (Trueswell et al.'s propose-but-verify; Yurovsky & Frank).  This is the one
+    free parameter fitted to human accuracy."""
+
     ot_iters: int = 60
 
 
@@ -231,6 +246,7 @@ class CrossSituationalLearner:
         self.cfg = cfg
         self.counts = torch.zeros(vocab_size, n_objects, dtype=torch.float64)
         self.n_trials = 0
+        self._rng = np.random.default_rng(0)
 
     def pmi(self) -> torch.Tensor:
         c = self.counts + self.cfg.smoothing
@@ -243,6 +259,12 @@ class CrossSituationalLearner:
         return self.pmi()
 
     def observe(self, words: np.ndarray, objects: np.ndarray) -> None:
+        if self.cfg.attend_k is not None:
+            k = self.cfg.attend_k
+            if len(words) > k:
+                words = words[self._rng.choice(len(words), k, replace=False)]
+            if len(objects) > k:
+                objects = objects[self._rng.choice(len(objects), k, replace=False)]
         w = torch.as_tensor(words, dtype=torch.long)
         o = torch.as_tensor(objects, dtype=torch.long)
         sim = (self.cfg.feedback * self.pmi()[w][:, o]).to(torch.float32).unsqueeze(0)
@@ -256,7 +278,7 @@ class CrossSituationalLearner:
         )
         plan = plan[0].to(torch.float64) * len(w)
         if self.cfg.gamma < 1.0:
-            self.counts.mul_(1.0 - self.cfg.gamma)
+            self.counts.mul_(self.cfg.gamma)
         self.counts[w.unsqueeze(1), o.unsqueeze(0)] += plan
         self.n_trials += 1
 

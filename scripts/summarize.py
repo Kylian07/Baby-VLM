@@ -132,23 +132,27 @@ def section_yusmith(results: Path) -> str:
     out = [
         "## 4. Yu & Smith (2007) psychometric fit",
         "",
-        "An unconstrained ideal observer is at ceiling on the original design, so the question is "
-        "what memory decay reproduces the human ordering with one shared free parameter.",
+        "An unconstrained ideal observer is at ceiling on the original design at *every* memory-decay "
+        "rate, so forgetting is not the limit that explains human performance. Limited encoding is: "
+        "a learner registers only a few of the word-object pairs on offer per trial.",
         "",
-        "| memory decay γ | 2×2 | 3×3 | 4×4 | RMSE vs human |",
+        "| objects encoded / trial | 2×2 | 3×3 | 4×4 | RMSE vs human |",
         "|---|---|---|---|---|",
     ]
     for r in rows:
         p = r["pred"]
+        k = r.get("attend_k", r.get("gamma"))
+        label = "unlimited" if k in (0, None) else str(k)
         out.append(
-            f"| {r['gamma']} | {p.get('2', float('nan')):.3f} | {p.get('3', float('nan')):.3f} | "
+            f"| {label} | {p.get('2', float('nan')):.3f} | {p.get('3', float('nan')):.3f} | "
             f"{p.get('4', float('nan')):.3f} | {r['rmse']:.3f} |"
         )
     h = rows[0]["human"]
     out += [
         f"| **human** | {h['2']:.3f} | {h['3']:.3f} | {h['4']:.3f} | — |",
         "",
-        f"Best fit at γ = {best['gamma']} (RMSE {best['rmse']:.3f}).",
+        f"Best fit: {best.get('attend_k', '?')} objects encoded per trial "
+        f"(RMSE {best['rmse']:.3f}).",
         "",
     ]
     return "\n".join(out)

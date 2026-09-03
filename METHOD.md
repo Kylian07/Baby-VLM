@@ -226,7 +226,7 @@ Ground truth known, so the mechanism can be measured rather than inferred.
 * **Ablation ladder**: region–word contrastive → `+` null bin → `+` mutual exclusivity → balanced.
 * **`ρ` sweep**: continuous interpolation from the baseline to full exclusivity.
 * **Hub rate**: fraction of words whose nearest referent is a never-named background object — the direct measurement of Prop. 2.
-* **Yu & Smith replication**: an unconstrained ideal observer is at ceiling on the original design, so the honest experiment is *how much memory decay must be assumed* to reproduce the human ordering (0.889 / 0.778 / 0.556) with one shared free parameter.
+* **Yu & Smith replication**: an unconstrained ideal observer is at ceiling on the original design — and stays at ceiling for *every* memory-decay rate, so forgetting is not the capacity limit that explains human performance. The limit that does is **limited encoding**: a learner registers only a few of the word-object pairs on offer per trial (Trueswell et al.'s propose-but-verify; Yurovsky & Frank). Fitting that single parameter, encoding 2 objects per trial gives 0.542 in the 4×4 condition against a human 0.556.
 
 ### 6.2 Real data — 2×T4, ~4–6 h
 SAYCam is Databrary-gated. The BabyVLM-V2 authors released a **fully public Ego4D variant**: `wsashawn/devcv_toolbox_ego4d` (evaluation), `wsashawn/babyllava_v2_instruction_ft_Ego4D` (~89k instruction examples), and phase-0/2/3 checkpoints. All headline numbers are therefore reproducible by a reviewer without a data licence.

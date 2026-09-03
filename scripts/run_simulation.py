@@ -130,20 +130,21 @@ def exp_rho(args):
 def exp_yusmith(args):
     """Ideal observer vs. humans on the original design, with one free parameter.
 
-    An unconstrained ideal observer solves Yu & Smith's task perfectly, so the
-    interesting question is not whether it can, but what capacity limit has to
-    be assumed to reproduce the human accuracy *ordering*.  We fit a single
-    memory-decay parameter shared across all three conditions.
+    An unconstrained ideal observer solves Yu & Smith's task perfectly at every
+    memory-decay rate, so forgetting is *not* the capacity limit that explains
+    human performance.  The account that does is limited encoding: a learner
+    registers only a few of the word-object pairs available on each trial.  We
+    fit that single parameter, shared across all three conditions.
     """
-    print("=== Yu & Smith (2007) replication: fitting one memory-decay parameter ===")
+    print("=== Yu & Smith (2007): fitting one limited-encoding parameter ===")
     rows = []
-    for gamma in args.gammas:
+    for k in args.attend:
         preds, errs = {}, []
         for m, human in YU_SMITH_HUMAN.items():
             accs = [
                 run_learner(
                     ReferentialWorld(WorldConfig(n_words=18, objects_per_trial=m, seed=s)),
-                    LearnerConfig(gamma=gamma, rho=None),
+                    LearnerConfig(attend_k=None if k <= 0 else k, rho=None),
                     n_trials=27,
                 )["accuracy"]
                 for s in range(args.seeds)
@@ -151,15 +152,15 @@ def exp_yusmith(args):
             preds[m] = float(np.mean(accs))
             errs.append((preds[m] - human) ** 2)
         rmse = float(np.sqrt(np.mean(errs)))
-        rows.append(dict(gamma=gamma, pred=preds, human=YU_SMITH_HUMAN, rmse=rmse))
+        rows.append(dict(attend_k=k, pred=preds, human=YU_SMITH_HUMAN, rmse=rmse))
         print(
-            f"  gamma={gamma:<6} "
+            f"  attend_k={k:<4} "
             + "  ".join(f"{m}x{m}: {preds[m]:.3f} (human {YU_SMITH_HUMAN[m]:.3f})" for m in preds)
             + f"   RMSE={rmse:.3f}",
             flush=True,
         )
     best = min(rows, key=lambda r: r["rmse"])
-    print(f"  best gamma = {best['gamma']} (RMSE {best['rmse']:.3f})")
+    print(f"  best attend_k = {best['attend_k']} (RMSE {best['rmse']:.3f})")
     return rows
 
 
@@ -230,7 +231,8 @@ def main():
     ap.add_argument("--corpus-size", type=int, default=500)
     ap.add_argument("--corpus-sizes", type=int, nargs="+", default=[100, 300, 1000, 3000])
     ap.add_argument("--feat-noise", type=float, default=0.35)
-    ap.add_argument("--gammas", type=float, nargs="+", default=[1.0, 0.9, 0.8, 0.7, 0.6, 0.5])
+    ap.add_argument("--attend", type=int, nargs="+", default=[0, 1, 2, 3, 4],
+                    help="objects encoded per trial; 0 means unlimited")
     ap.add_argument("--out", type=Path, default=Path("results"))
     args = ap.parse_args()
 
