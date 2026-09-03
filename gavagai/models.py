@@ -12,8 +12,10 @@ be trained end to end at infant scale.  Deliberate choices:
 * **Word-level vocabulary.**  Child-directed speech has a small vocabulary, and
   a word-level table keeps the lexicon in ``gavagai.lexicon`` indexable.
 
-Default config (ViT-S/16 at 128px, 64 patches, 16 slots) is ~22M parameters and
-trains comfortably in fp16 within a 16GB T4.
+Default config is ViT-S/16 at 128px (an 8x8 patch grid pooled to 16 slots):
+16.8M parameters for ``GroundingModel`` alone, 22.3M for ``BabyVLM`` including
+the caption decoder at the default 8192-word vocabulary. Both train comfortably
+in fp16 within a 16GB T4.
 """
 
 from __future__ import annotations

@@ -110,7 +110,8 @@ gavagai/
   losses.py     E-step / M-step objective + hub-collapse diagnostic
   lexicon.py    persistent word x concept lexicon with PMI feedback
   sim.py        controlled cross-situational world; contrastive + AR learners
-  models.py     16.8M-param ViT-S/16 grounding model (T4-sized, from scratch)
+  models.py     ViT-S/16 grounding model + caption decoder, from scratch
+                (16.8M encoder / 22.3M with decoder; T4-sized)
   data/devcv.py DevCV-Toolbox loader + zero-shot PV / localization evaluators
 scripts/
   text_blind_audit.py   benchmark audit (Finding 1)
