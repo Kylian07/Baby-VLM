@@ -71,6 +71,14 @@ class WorldConfig:
     background_name_prob: float = 0.02
     """Probability a present background object actually gets named."""
 
+    absent_ref_prob: float = 0.0
+    """Probability of uttering a real object's name while that object is NOT in
+    the scene ("ball!" as the ball rolls out of view).  Vong et al. report the
+    target referent is visible for only a minority of caregiver utterances, so
+    this is the dominant realistic source of *false* word-object co-occurrence:
+    the word is forced onto whatever happens to be visible, which is usually a
+    never-named background object."""
+
     n_feature_families: int = 0
     """If > 0, object appearance vectors are drawn around this many shared family
     centroids, making objects visually confusable.  Real object categories are
@@ -149,6 +157,14 @@ class ReferentialWorld:
         for _ in bg:
             if self.rng.random() < cfg.background_name_prob:
                 words.append(cfg.n_words + int(self.rng.integers(cfg.n_filler_words)))
+
+        if cfg.absent_ref_prob > 0:
+            present = set(int(o) for o in fg)
+            for _ in range(len(fg)):
+                if self.rng.random() < cfg.absent_ref_prob:
+                    absent = [i for i in range(cfg.n_words) if i not in present]
+                    if absent:
+                        words.append(int(self.rng.choice(absent)))
 
         words = np.array(words, dtype=np.int64)
         objects = np.array(list(fg) + bg, dtype=np.int64)
