@@ -54,6 +54,17 @@ Lexicon accuracy vs. finite corpus size, contrastive objective. Reported because
 
 No reliable benefit, and at large corpus sizes the exclusivity conditions are slightly worse. The batch-level InfoNCE draws negatives from the marginal and already suppresses hub collapse, so the column constraint has nothing left to fix.
 
+## 3b. Mutual-exclusivity strength ρ
+
+Contrastive setting, corpus = 1000 episodes, 3 seeds. `ρ = 0` *is* region–word contrastive learning (Proposition 1), so this sweep interpolates continuously from the baseline.
+
+| ρ | 0 (row softmax) | 0.02 | 0.05 | 0.1 | 0.3 | 1 | 3 | ∞ (balanced) |
+|---|---|---|---|---|---|---|---|---|
+| accuracy | 0.275 | 0.333 | 0.375 | 0.383 | 0.358 | 0.333 | 0.358 | 0.350 |
+| hub rate | 0.050 | 0.033 | 0.050 | 0.033 | 0.042 | 0.025 | 0.025 | 0.025 |
+
+The optimum is **interior**: full exclusivity over-constrains, because real scenes do contain several plausible referents. Hub rate falls between the endpoints (0.050 → 0.025) but is not monotone in between and is noisy at this seed count.
+
 ## 4. Yu & Smith (2007) psychometric fit
 
 An unconstrained ideal observer is at ceiling on the original design at *every* memory-decay rate, so forgetting is not the limit that explains human performance. Limited encoding is: a learner registers only a few of the word-object pairs on offer per trial.

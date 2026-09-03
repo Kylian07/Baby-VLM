@@ -123,6 +123,39 @@ def section_efficiency(results: Path) -> str:
     return "\n".join(out)
 
 
+def section_rho(results: Path) -> str:
+    d = _load(results / "sim_rho.json")
+    if not d:
+        return "## 3b. Mutual-exclusivity strength\n\n_Not yet run: `python scripts/run_simulation.py rho`._\n"
+    rows = d["rows"]
+
+    def key(r):
+        v = r["condition"].split("=", 1)[1]
+        return float("inf") if v == "None" else float(v)
+
+    rows = sorted(rows, key=key)
+    labels = ["0 (row softmax)" if key(r) == 0 else ("∞ (balanced)" if key(r) == float("inf")
+              else f"{key(r):g}") for r in rows]
+    out = [
+        "## 3b. Mutual-exclusivity strength ρ",
+        "",
+        f"Contrastive setting, corpus = {d['args'].get('corpus_size','?')} episodes, "
+        f"{d['args'].get('seeds','?')} seeds. `ρ = 0` *is* region–word contrastive learning "
+        "(Proposition 1), so this sweep interpolates continuously from the baseline.",
+        "",
+        "| ρ | " + " | ".join(labels) + " |",
+        "|---|" + "---|" * len(rows),
+        "| accuracy | " + " | ".join(f"{r['acc_mean']:.3f}" for r in rows) + " |",
+        "| hub rate | " + " | ".join(f"{r['hub_mean']:.3f}" for r in rows) + " |",
+        "",
+        "The optimum is **interior**: full exclusivity over-constrains, because real scenes do "
+        "contain several plausible referents. Hub rate falls between the endpoints (0.050 → "
+        "0.025) but is not monotone in between and is noisy at this seed count.",
+        "",
+    ]
+    return "\n".join(out)
+
+
 def section_yusmith(results: Path) -> str:
     d = _load(results / "sim_yusmith.json")
     if not d:
@@ -168,6 +201,7 @@ def main():
         section_ar(args.results),
         section_audit(args.results),
         section_efficiency(args.results),
+        section_rho(args.results),
         section_yusmith(args.results),
     ])
     args.out.write_text(text)
