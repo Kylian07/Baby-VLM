@@ -222,9 +222,9 @@ The one-sentence novelty: **mutual exclusivity — a signature inductive bias of
 
 ### 6.1 Controlled simulation — CPU, minutes
 Ground truth known, so the mechanism can be measured rather than inferred.
-* **Sample-efficiency sweep** (headline): accuracy vs. size of a *finite* corpus. Infant-scale data is the regime of interest; with unlimited episodes every method eventually succeeds, which we report.
-* **Ablation ladder**: region–word contrastive → `+` null bin → `+` mutual exclusivity → balanced.
-* **`ρ` sweep**: continuous interpolation from the baseline to full exclusivity.
+* **Captioning ablation** (headline, §6.2a): autoregressive captioning → `+` naive alignment → `+` null bin → `+` mutual exclusivity → balanced, across three ambiguity regimes. Readout is picture-vocabulary accuracy on **held-out exemplars**, so it measures generalisation to unseen instances of a category rather than recall of one stored vector — the distinction that invalidated an earlier version of this analysis (§6.2b).
+* **`ρ` sweep** (§6.2b): continuous interpolation from `ρ=0`, which *is* region–word contrastive learning, to full exclusivity.
+* **Sample-efficiency sweep**: accuracy vs. size of a *finite* corpus, since infant-scale data is the regime of interest.
 * **Hub rate**: fraction of words whose nearest referent is a never-named background object — the direct measurement of Prop. 2.
 * **Yu & Smith replication**: an unconstrained ideal observer is at ceiling on the original design — and stays at ceiling for *every* memory-decay rate, so forgetting is not the capacity limit that explains human performance. The limit that does is **limited encoding**: a learner registers only a few of the word-object pairs on offer per trial (Trueswell et al.'s propose-but-verify; Yurovsky & Frank). Fitting that single parameter, encoding 2 objects per trial gives 0.542 in the 4×4 condition against a human 0.556.
 
@@ -287,7 +287,7 @@ The general lesson, recorded because it nearly cost the whole result: **a negati
 3. **The vocabulary-spurt result is a prediction under test**, not a theorem, and may fail.
 4. **`η` (the null prior) is a hyper-parameter**, not learned from caregiver-speech statistics. Estimating it from CHILDES is future work.
 5. **Prop. 2 shows hub collapse is infeasible, not that the optimum is the true lexicon.** Correctness of the recovered lexicon is an empirical claim, evidenced in §6.
-6. **The exclusivity constraint provides no measured benefit when a batch-level contrastive term is present** (§6.2b). The method's value rests on the autoregressive setting, where that term is absent.
+6. **The `ρ` optimum is interior and the effect is modest in absolute terms** (0.275 → 0.383 at a 1000-episode corpus, 3 seeds). An earlier version of this document claimed the constraint gave no benefit at all in the contrastive setting; that claim is retracted in §6.2b, and the episode is a reminder that these simulation results are sensitive to how the world is parameterised.
 7. **The text-blind audit rests on small samples** (n = 6–24 per task). It is reported with Wilson intervals and must be regenerated on the full public release.
 8. **The most realistic ambiguity regime is floor-limited** at the simulation budget used: every condition sits near chance and only the collapse of the naive ablation is statistically clean. Conclusions about which *working* method is best come from the clean and moderate regimes.
 9. **`kappa` is a hyper-parameter, not learned.** It is read only inside the no-grad E-step and so receives no gradient — Danskin's theorem working as intended, not a bug. It is swept.
