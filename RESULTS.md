@@ -45,21 +45,21 @@ Tasks with no query image to match against show `n/a`; the matcher is inapplicab
 
 Lexicon accuracy vs. finite corpus size, contrastive objective, on the corrected multi-exemplar world with held-out evaluation. An earlier version of this table was measured with a single appearance per object, where every condition saturated at 1.000 and the comparison was vacuous; see METHOD.md §6.2b for the retraction.
 
-| condition | n=100 | n=300 | n=1000 | n=3000 |
+| condition | n=250 | n=500 | n=1000 | n=2500 |
 |---|---|---|---|---|
-| A_region_word_contrastive | 0.692 | 0.908 | 0.983 | 1.000 |
-| B_plus_null_bin | 0.700 | 0.908 | 0.983 | 1.000 |
-| C_plus_mutual_exclusivity | 0.700 | 0.908 | 0.942 | 0.958 |
-| D_balanced | 0.708 | 0.867 | 0.917 | 0.950 |
+| A_region_word_contrastive | 0.342 | 0.358 | 0.392 | 0.450 |
+| B_plus_null_bin | 0.333 | 0.417 | 0.367 | 0.350 |
+| C_plus_mutual_exclusivity | 0.400 | 0.458 | 0.475 | 0.542 |
+| D_balanced | 0.383 | 0.475 | 0.467 | 0.492 |
 
 Hub rate (same runs):
 
-| condition | n=100 | n=300 | n=1000 | n=3000 |
+| condition | n=250 | n=500 | n=1000 | n=2500 |
 |---|---|---|---|---|
-| A_region_word_contrastive | 0.000 | 0.000 | 0.000 | 0.000 |
-| B_plus_null_bin | 0.000 | 0.000 | 0.000 | 0.000 |
-| C_plus_mutual_exclusivity | 0.000 | 0.008 | 0.000 | 0.000 |
-| D_balanced | 0.000 | 0.000 | 0.000 | 0.000 |
+| A_region_word_contrastive | 0.025 | 0.025 | 0.067 | 0.033 |
+| B_plus_null_bin | 0.025 | 0.008 | 0.042 | 0.025 |
+| C_plus_mutual_exclusivity | 0.008 | 0.000 | 0.017 | 0.008 |
+| D_balanced | 0.000 | 0.000 | 0.025 | 0.017 |
 
 `hub` is the fraction of words whose nearest referent is a never-named background object — the quantity Proposition 2 predicts the column constraint should suppress.
 

@@ -283,6 +283,26 @@ Two things worth more than the headline number.
 1. **The hub rate trends down as `ρ` rises**, from 0.050 at `ρ=0` to 0.025 for `ρ ≥ 1`. It is *not* monotone across the sweep (0.050, 0.033, 0.050, 0.033, 0.042, 0.025, 0.025, 0.025) — at 3 seeds these mid-range wobbles are within noise — but the endpoints differ by a factor of two in the direction Proposition 2 predicts: the fraction of words whose nearest referent is a never-named background object halves as the column constraint tightens. More seeds are needed before leaning on this.
 2. **The optimum is interior**, at `ρ ≈ 0.1`, not at `ρ = ∞`. Full mutual exclusivity over-constrains: real scenes genuinely do contain several things one word could attach to, and forcing a near-permutation costs accuracy. The knob is a trade-off, which is what one would want from a cognitive constraint rather than a monotone trick.
 
+Re-measuring the sample-efficiency sweep on the corrected world confirms it at every corpus size (3 seeds; `A` is `ρ=0` with no null bin, i.e. plain region–word contrastive learning):
+
+| corpus | A (contrastive) | B (+ null) | C (+ exclusivity) | D (balanced) |
+|---|---|---|---|---|
+| 250 | 0.342 | 0.333 | **0.400** | 0.383 |
+| 500 | 0.358 | 0.417 | 0.458 | **0.475** |
+| 1000 | 0.392 | 0.367 | **0.475** | 0.467 |
+| 2500 | 0.450 | 0.350 | **0.542** | 0.492 |
+
+and the hub rate is lower for the exclusivity conditions throughout:
+
+| corpus | A | B | C | D |
+|---|---|---|---|---|
+| 250 | 0.025 | 0.025 | 0.008 | 0.000 |
+| 500 | 0.025 | 0.008 | 0.000 | 0.000 |
+| 1000 | 0.067 | 0.042 | 0.017 | 0.025 |
+| 2500 | 0.033 | 0.025 | 0.008 | 0.017 |
+
+`C` beats `A` at all four sizes (+0.058, +0.100, +0.083, +0.092) with hub rate roughly a third to a quarter of the baseline's — the accuracy gain and the mechanism it is attributed to move together, which is the evidence that matters. The null bin alone (`B`) is erratic here, which is expected: this simulator's non-referential words are drawn from a disjoint filler vocabulary, so a contrastive model can isolate them without help. The null bin earns its place in the *autoregressive* setting (§6.2a), where forcing every word to ground collapsed the model to 0.000.
+
 The general lesson, recorded because it nearly cost the whole result: **a negative result measured in a regime where every condition saturates is not a negative result.** The single-exemplar simulator was the bug, and both the original "no benefit" claim and the sample-efficiency table it rested on were consequences of it.
 
 ### 6.3 Reporting standards
