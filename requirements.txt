@@ -3,3 +3,7 @@ numpy>=1.24
 scipy>=1.10
 matplotlib>=3.7
 pytest>=7.4
+
+# for scripts/make_report.py (PDF report generation) only
+reportlab>=4.0
+pillow>=10.0
