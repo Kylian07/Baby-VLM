@@ -93,7 +93,7 @@ def fig_efficiency(results: Path, out: Path) -> bool:
     ax.set_xscale("log")
     ax.set_xlabel("corpus size (episodes)")
     ax.set_ylabel("lexicon accuracy")
-    ax.set_title("Contrastive setting: no reliable benefit (scope condition)",
+    ax.set_title("Contrastive setting: accuracy vs. corpus size",
                  loc="left", fontweight="bold", fontsize=10)
     ax.legend(fontsize=7, frameon=False)
     ax.spines[["top", "right"]].set_visible(False)
