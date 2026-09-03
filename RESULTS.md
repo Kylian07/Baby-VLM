@@ -41,9 +41,9 @@ Accuracy of a training-free 32×32 luminance + RGB-histogram matcher that **neve
 
 Tasks with no query image to match against show `n/a`; the matcher is inapplicable, not merely unsuccessful.
 
-## 3. Scope condition — the contrastive setting, where it does *not* help
+## 3. Sample efficiency — the contrastive setting
 
-Lexicon accuracy vs. finite corpus size, contrastive objective. Reported because it is the boundary of the method's claim.
+Lexicon accuracy vs. finite corpus size, contrastive objective, on the corrected multi-exemplar world with held-out evaluation. An earlier version of this table was measured with a single appearance per object, where every condition saturated at 1.000 and the comparison was vacuous; see METHOD.md §6.2b for the retraction.
 
 | condition | n=100 | n=300 | n=1000 | n=3000 |
 |---|---|---|---|---|
@@ -52,7 +52,16 @@ Lexicon accuracy vs. finite corpus size, contrastive objective. Reported because
 | C_plus_mutual_exclusivity | 0.700 | 0.908 | 0.942 | 0.958 |
 | D_balanced | 0.708 | 0.867 | 0.917 | 0.950 |
 
-No reliable benefit, and at large corpus sizes the exclusivity conditions are slightly worse. The batch-level InfoNCE draws negatives from the marginal and already suppresses hub collapse, so the column constraint has nothing left to fix.
+Hub rate (same runs):
+
+| condition | n=100 | n=300 | n=1000 | n=3000 |
+|---|---|---|---|---|
+| A_region_word_contrastive | 0.000 | 0.000 | 0.000 | 0.000 |
+| B_plus_null_bin | 0.000 | 0.000 | 0.000 | 0.000 |
+| C_plus_mutual_exclusivity | 0.000 | 0.008 | 0.000 | 0.000 |
+| D_balanced | 0.000 | 0.000 | 0.000 | 0.000 |
+
+`hub` is the fraction of words whose nearest referent is a never-named background object — the quantity Proposition 2 predicts the column constraint should suppress.
 
 ## 3b. Mutual-exclusivity strength ρ
 

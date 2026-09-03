@@ -99,10 +99,12 @@ def section_efficiency(results: Path) -> str:
     sizes = sorted({r["corpus_size"] for r in rows})
     conds = list(dict.fromkeys(r["condition"] for r in rows))
     out = [
-        "## 3. Scope condition — the contrastive setting, where it does *not* help",
+        "## 3. Sample efficiency — the contrastive setting",
         "",
-        "Lexicon accuracy vs. finite corpus size, contrastive objective. Reported because it is "
-        "the boundary of the method's claim.",
+        "Lexicon accuracy vs. finite corpus size, contrastive objective, on the corrected "
+        "multi-exemplar world with held-out evaluation. An earlier version of this table was "
+        "measured with a single appearance per object, where every condition saturated at "
+        "1.000 and the comparison was vacuous; see METHOD.md §6.2b for the retraction.",
         "",
         "| condition | " + " | ".join(f"n={s}" for s in sizes) + " |",
         "|---|" + "---|" * len(sizes),
@@ -113,11 +115,21 @@ def section_efficiency(results: Path) -> str:
             r = next((x for x in rows if x["condition"] == c and x["corpus_size"] == s), None)
             cells.append(f"{r['acc_mean']:.3f}" if r else "—")
         out.append(f"| {c} | " + " | ".join(cells) + " |")
+    out.append("")
+    out.append("Hub rate (same runs):")
+    out.append("")
+    out.append("| condition | " + " | ".join(f"n={s_}" for s_ in sizes) + " |")
+    out.append("|---|" + "---|" * len(sizes))
+    for c in conds:
+        cells = []
+        for s_ in sizes:
+            r = next((x for x in rows if x["condition"] == c and x["corpus_size"] == s_), None)
+            cells.append(f"{r['hub_mean']:.3f}" if r else "—")
+        out.append(f"| {c} | " + " | ".join(cells) + " |")
     out += [
         "",
-        "No reliable benefit, and at large corpus sizes the exclusivity conditions are slightly "
-        "worse. The batch-level InfoNCE draws negatives from the marginal and already suppresses "
-        "hub collapse, so the column constraint has nothing left to fix.",
+        "`hub` is the fraction of words whose nearest referent is a never-named background "
+        "object — the quantity Proposition 2 predicts the column constraint should suppress.",
         "",
     ]
     return "\n".join(out)
