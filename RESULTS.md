@@ -6,9 +6,19 @@ Chance floors and sample sizes are given for every table. Where a result is
 negative or fails to support the hypothesis, it is reported here in the same
 form as a positive one.
 
-## 1. Captioning ± referential alignment
+## 1. Captioning ± referential alignment (controlled simulation)
 
-_Not yet run: `python scripts/run_simulation.py ar`._
+Picture-vocabulary accuracy on **held-out exemplars**. Chance = 1/40 = 0.025. 3 seeds, 600 steps, corpus = 1500 episodes.
+
+| condition | Clean | Moderate | Realistic |
+|---|---|---|---|
+| AR only (captioning) | 0.392 ± 0.031 | 0.242 ± 0.047 | 0.058 ± 0.031 |
+| + naive align (rho=0,no null) | 0.650 ± 0.054 | 0.358 ± 0.031 | 0.000 ± 0.000 |
+| + null bin only | 0.658 ± 0.024 | 0.358 ± 0.051 | 0.017 ± 0.012 |
+| + null + ME (OURS) | 0.700 ± 0.054 | 0.400 ± 0.020 | 0.075 ± 0.061 |
+| + null + balanced | 0.683 ± 0.066 | 0.400 ± 0.020 | 0.083 ± 0.042 |
+
+The regimes vary how much of the speech is non-referential, how often a word is uttered while its referent is absent, and how many never-named background objects are present.
 
 ## 2. Text-blind benchmark audit
 

@@ -191,7 +191,8 @@ def exp_ar(args):
     print("=== autoregressive captioning +/- referential alignment ===")
     print(f"    corpus={args.corpus_size} episodes, {args.seeds} seeds, held-out exemplar readout")
     rows = []
-    for wname, wkw in AR_WORLDS.items():
+    selected = args.regimes or list(AR_WORLDS)
+    for wname, wkw in ((k, AR_WORLDS[k]) for k in selected):
         print(f"\n  [{wname}] {wkw}")
         for cname, ckw in AR_CONDITIONS.items():
             accs = []
@@ -224,7 +225,8 @@ def main():
     ap.add_argument("experiment", choices=sorted(EXPERIMENTS))
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--steps", type=int, default=400)
-    ap.add_argument("--chance-note", action="store_true", help="print the chance floor")
+    ap.add_argument("--regimes", nargs="+", default=None,
+                    choices=sorted(AR_WORLDS), help="subset of ambiguity regimes to run")
     ap.add_argument("--corpus-size", type=int, default=500)
     ap.add_argument("--corpus-sizes", type=int, nargs="+", default=[100, 300, 1000, 3000])
     ap.add_argument("--feat-noise", type=float, default=0.35)

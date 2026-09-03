@@ -30,7 +30,7 @@ This is not a failure of perception. The visual representation is evidently good
 
 1. **Part of the dissociation is a benchmark artefact** (§1.1). Some of the tasks the baby model aces can be answered without reading the question at all. This is a measurement, not a bet.
 2. **The residual gap is real and is about referential binding** (§2). The tasks that survive the audit are exactly those needing a word→referent mapping, and the autoregressive objective used to train the baby model contains no term that supplies binding pressure.
-3. **It is fixable cheaply** (§3) by adding the missing latent variable: a semi-relaxed optimal-transport alignment between words and object slots, with a null bin for non-referential speech. This is the part that is a bet, and §6.2 states the scope condition under which it does *not* help.
+3. **It is fixable cheaply** (§3) by adding the missing latent variable: a semi-relaxed optimal-transport alignment between words and object slots, with a null bin for non-referential speech. In controlled simulation this lifts picture-vocabulary accuracy from 0.392 to 0.700 (clean) and 0.242 to 0.400 (moderate ambiguity), while the *naive* form of the same alignment — no null bin, row-softmax E-step — collapses to **0.000** under realistic ambiguity, i.e. it is worse than adding nothing. §6.2b states the scope condition under which the exclusivity constraint does *not* help.
 
 ---
 
@@ -235,6 +235,24 @@ SAYCam is Databrary-gated. The BabyVLM-V2 authors released a **fully public Ego4
 * Zero-shot **Picture Vocabulary** and **Localization** on DevCV-Toolbox-Ego4D. Localization is free for us: the transport plan gives word→slot attribution with no box supervision, and slot→patch centroid gives a quadrant.
 * A SAYCam adapter ships in the repo but is not on the critical path.
 
+### 6.2a Headline result — captioning ± referential alignment
+
+Full numbers are in [`RESULTS.md`](RESULTS.md), regenerated from the run outputs rather than typed by hand. Picture-vocabulary accuracy on **held-out exemplars**, chance = 1/40 = 0.025, 3 seeds:
+
+| condition | clean | moderate | realistic |
+|---|---|---|---|
+| AR only (captioning) | 0.392 ± 0.031 | 0.242 ± 0.047 | 0.058 ± 0.031 |
+| + naive align (`ρ=0`, no null) | 0.650 ± 0.054 | 0.358 ± 0.031 | **0.000 ± 0.000** |
+| + null bin only | 0.658 ± 0.024 | 0.358 ± 0.051 | 0.017 ± 0.012 |
+| + null + ME (**ours**) | **0.700 ± 0.054** | **0.400 ± 0.020** | 0.075 ± 0.061 |
+| + null + balanced | 0.683 ± 0.066 | 0.400 ± 0.020 | 0.083 ± 0.042 |
+
+Three things to note, including one against us.
+
+1. **The captioning objective alone is the weakest condition in every regime.** Adding a latent word↔slot variable is what buys the improvement; this is the core claim and it holds throughout.
+2. **Under realistic ambiguity the naive form of that variable is catastrophic** — 0.000 with zero variance across all three seeds, far below the 0.025 chance floor, which is total hub collapse. Forcing every word to ground is worse than not aligning at all. The null bin and the exclusivity constraint are what prevent it.
+3. **Against us:** the realistic regime is floor-limited at this budget. Ours (0.075 ± 0.061) is nominally best but the dispersion is larger than the gap, so it supports no claim beyond "does not collapse". The separation that *is* meaningful lives in the clean and moderate regimes.
+
 ### 6.2b Scope condition — where the method does *not* help
 
 We tried to break the mutual-exclusivity claim and partly succeeded, so we report it as a scope condition rather than discovering it in review.
@@ -270,4 +288,5 @@ Small positive effects did appear in the contrastive setting under small batches
 5. **Prop. 2 shows hub collapse is infeasible, not that the optimum is the true lexicon.** Correctness of the recovered lexicon is an empirical claim, evidenced in §6.
 6. **The exclusivity constraint provides no measured benefit when a batch-level contrastive term is present** (§6.2b). The method's value rests on the autoregressive setting, where that term is absent.
 7. **The text-blind audit rests on small samples** (n = 6–24 per task). It is reported with Wilson intervals and must be regenerated on the full public release.
-8. **`kappa` is a hyper-parameter, not learned.** It is read only inside the no-grad E-step and so receives no gradient — Danskin's theorem working as intended, not a bug. It is swept.
+8. **The most realistic ambiguity regime is floor-limited** at the simulation budget used: every condition sits near chance and only the collapse of the naive ablation is statistically clean. Conclusions about which *working* method is best come from the clean and moderate regimes.
+9. **`kappa` is a hyper-parameter, not learned.** It is read only inside the no-grad E-step and so receives no gradient — Danskin's theorem working as intended, not a bug. It is swept.
