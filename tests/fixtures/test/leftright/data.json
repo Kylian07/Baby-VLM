@@ -1,0 +1,1 @@
+[{"id": "lr_0", "conversations": [{"from": "human", "value": "<image> Which of the following is the same as this? Answer with a number. (A) <image> (B) <image> (C) <image>"}, {"from": "gpt", "value": "A"}], "image": ["images/lr_0_0.jpeg", "images/lr_0_1.jpeg", "images/lr_0_2.jpeg", "images/lr_0_3.jpeg"]}]

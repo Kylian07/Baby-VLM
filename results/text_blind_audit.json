@@ -1,0 +1,128 @@
+{
+  "compare_real": {
+    "n_items": 6,
+    "chance": 0.5,
+    "position_acc": 0.6666666666666666,
+    "position_ci": [
+      0.29998832134152864,
+      0.9032306674407831
+    ]
+  },
+  "compare_synthetic": {
+    "n_items": 6,
+    "chance": 0.5,
+    "position_acc": 0.6666666666666666,
+    "position_ci": [
+      0.29998832134152864,
+      0.9032306674407831
+    ]
+  },
+  "leftright": {
+    "n_items": 24,
+    "chance": 0.3333333333333333,
+    "position_acc": 0.4166666666666667,
+    "position_ci": [
+      0.24467347246538232,
+      0.6116566235061137
+    ],
+    "match_acc": 1.0,
+    "match_n": 24,
+    "match_ci": [
+      0.8620194241710247,
+      1.0
+    ]
+  },
+  "localize": {
+    "n_items": 24,
+    "chance": 0.25,
+    "position_acc": 0.4166666666666667,
+    "position_ci": [
+      0.24467347246538232,
+      0.6116566235061137
+    ]
+  },
+  "picture_vocab": {
+    "n_items": 10,
+    "chance": 0.25,
+    "position_acc": 0.6,
+    "position_ci": [
+      0.3126695474501864,
+      0.8318224187964902
+    ]
+  },
+  "picture_vocab_selected": {
+    "n_items": 10,
+    "chance": 0.25,
+    "position_acc": 0.6,
+    "position_ci": [
+      0.3126695474501864,
+      0.8318224187964902
+    ]
+  },
+  "picture_vocabulary": {
+    "n_items": 6,
+    "chance": 0.25,
+    "position_acc": 0.3333333333333333,
+    "position_ci": [
+      0.09676933255921683,
+      0.7000116786584712
+    ]
+  },
+  "spatial": {
+    "n_items": 10,
+    "chance": 0.26666666666666666,
+    "position_acc": 0.4,
+    "position_ci": [
+      0.16817758120350967,
+      0.6873304525498135
+    ],
+    "match_acc": 1.0,
+    "match_n": 10,
+    "match_ci": [
+      0.7224598312333834,
+      1.0
+    ]
+  },
+  "spatialdetails": {
+    "n_items": 6,
+    "chance": 0.3333333333333333,
+    "position_acc": 0.3333333333333333,
+    "position_ci": [
+      0.09676933255921683,
+      0.7000116786584712
+    ],
+    "match_acc": 0.3333333333333333,
+    "match_n": 6,
+    "match_ci": [
+      0.09676933255921683,
+      0.7000116786584712
+    ]
+  },
+  "vdr": {
+    "n_items": 10,
+    "chance": 0.5,
+    "position_acc": 0.6,
+    "position_ci": [
+      0.3126695474501864,
+      0.8318224187964902
+    ]
+  },
+  "who_has_more": {
+    "n_items": 10,
+    "chance": 0.5,
+    "position_acc": 0.8,
+    "position_ci": [
+      0.49015684672072335,
+      0.9433190520193067
+    ]
+  },
+  "whohasmore_synthetic": {
+    "n_items": 18,
+    "chance": 0.5,
+    "position_acc": 0.5555555555555556,
+    "position_ci": [
+      0.3371606942825164,
+      0.7544076889861088
+    ]
+  }
+}

@@ -1,0 +1,192 @@
+{
+  "args": {
+    "experiment": "ar",
+    "seeds": 3,
+    "steps": 600,
+    "chance_note": false,
+    "corpus_size": 1500,
+    "corpus_sizes": [
+      100,
+      300,
+      1000,
+      3000
+    ],
+    "feat_noise": 0.35,
+    "gammas": [
+      1.0,
+      0.9,
+      0.8,
+      0.7,
+      0.6,
+      0.5
+    ],
+    "out": "results"
+  },
+  "rows": [
+    {
+      "regime": "clean",
+      "condition": "AR only (captioning)",
+      "acc_mean": 0.3916666666666666,
+      "acc_std": 0.031180478223116186,
+      "accs": [
+        0.425,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "regime": "clean",
+      "condition": "+ naive align (rho=0,no null)",
+      "acc_mean": 0.65,
+      "acc_std": 0.05400617248673218,
+      "accs": [
+        0.575,
+        0.675,
+        0.7
+      ]
+    },
+    {
+      "regime": "clean",
+      "condition": "+ null bin only",
+      "acc_mean": 0.6583333333333333,
+      "acc_std": 0.023570226039551608,
+      "accs": [
+        0.625,
+        0.675,
+        0.675
+      ]
+    },
+    {
+      "regime": "clean",
+      "condition": "+ null + ME (OURS)",
+      "acc_mean": 0.7000000000000001,
+      "acc_std": 0.05400617248673217,
+      "accs": [
+        0.65,
+        0.775,
+        0.675
+      ]
+    },
+    {
+      "regime": "clean",
+      "condition": "+ null + balanced",
+      "acc_mean": 0.6833333333333332,
+      "acc_std": 0.06561673228343176,
+      "accs": [
+        0.65,
+        0.775,
+        0.625
+      ]
+    },
+    {
+      "regime": "moderate",
+      "condition": "AR only (captioning)",
+      "acc_mean": 0.2416666666666667,
+      "acc_std": 0.04714045207910319,
+      "accs": [
+        0.275,
+        0.275,
+        0.175
+      ]
+    },
+    {
+      "regime": "moderate",
+      "condition": "+ naive align (rho=0,no null)",
+      "acc_mean": 0.35833333333333334,
+      "acc_std": 0.031180478223116186,
+      "accs": [
+        0.4,
+        0.35,
+        0.325
+      ]
+    },
+    {
+      "regime": "moderate",
+      "condition": "+ null bin only",
+      "acc_mean": 0.35833333333333334,
+      "acc_std": 0.05137011669140814,
+      "accs": [
+        0.35,
+        0.425,
+        0.3
+      ]
+    },
+    {
+      "regime": "moderate",
+      "condition": "+ null + ME (OURS)",
+      "acc_mean": 0.39999999999999997,
+      "acc_std": 0.020412414523193145,
+      "accs": [
+        0.375,
+        0.4,
+        0.425
+      ]
+    },
+    {
+      "regime": "moderate",
+      "condition": "+ null + balanced",
+      "acc_mean": 0.39999999999999997,
+      "acc_std": 0.020412414523193145,
+      "accs": [
+        0.4,
+        0.375,
+        0.425
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "AR only (captioning)",
+      "acc_mean": 0.05833333333333334,
+      "acc_std": 0.031180478223116183,
+      "accs": [
+        0.05,
+        0.025,
+        0.1
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ naive align (rho=0,no null)",
+      "acc_mean": 0.0,
+      "acc_std": 0.0,
+      "accs": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null bin only",
+      "acc_mean": 0.016666666666666666,
+      "acc_std": 0.011785113019775794,
+      "accs": [
+        0.025,
+        0.025,
+        0.0
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null + ME (OURS)",
+      "acc_mean": 0.075,
+      "acc_std": 0.06123724356957945,
+      "accs": [
+        0.075,
+        0.0,
+        0.15
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null + balanced",
+      "acc_mean": 0.08333333333333333,
+      "acc_std": 0.04249182927993988,
+      "accs": [
+        0.1,
+        0.025,
+        0.125
+      ]
+    }
+  ]
+}

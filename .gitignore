@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Downloaded corpora live at the repo root. This pattern is anchored with a
+# leading slash on purpose: a bare "data/" also matches gavagai/data/, which is
+# a package directory, and silently excluded it from the repo.
+/data/
+/checkpoints/
+/runs/
+
+*.log
+*.pt
+*.ckpt
