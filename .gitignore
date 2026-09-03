@@ -1,9 +1,14 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-data/
-checkpoints/
+/data/          # downloaded corpora at the repo root only,
+                # NOT gavagai/data/ (a package directory)
+/checkpoints/
+/runs/
+/results_realistic/*.log
 results/*.log
 *.pt
 *.ckpt
-.ipynb_checkpoints/
+.ipynb_/checkpoints/
+/runs/
+/results_realistic/*.log
