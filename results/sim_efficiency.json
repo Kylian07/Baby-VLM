@@ -1,0 +1,218 @@
+{
+  "args": {
+    "experiment": "efficiency",
+    "seeds": 3,
+    "steps": 400,
+    "corpus_size": 500,
+    "corpus_sizes": [
+      100,
+      300,
+      1000,
+      3000
+    ],
+    "feat_noise": 0.35,
+    "gammas": [
+      1.0,
+      0.9,
+      0.8,
+      0.7,
+      0.6,
+      0.5
+    ],
+    "out": "results"
+  },
+  "rows": [
+    {
+      "corpus_size": 100,
+      "condition": "A_region_word_contrastive",
+      "acc_mean": 0.6916666666666668,
+      "acc_std": 0.03118047822311616,
+      "hub_mean": 0.0,
+      "accs": [
+        0.65,
+        0.725,
+        0.7
+      ]
+    },
+    {
+      "corpus_size": 100,
+      "condition": "B_plus_null_bin",
+      "acc_mean": 0.6999999999999998,
+      "acc_std": 0.020412414523193124,
+      "hub_mean": 0.0,
+      "accs": [
+        0.675,
+        0.725,
+        0.7
+      ]
+    },
+    {
+      "corpus_size": 100,
+      "condition": "C_plus_mutual_exclusivity",
+      "acc_mean": 0.7000000000000001,
+      "acc_std": 0.05400617248673217,
+      "hub_mean": 0.0,
+      "accs": [
+        0.625,
+        0.725,
+        0.75
+      ]
+    },
+    {
+      "corpus_size": 100,
+      "condition": "D_balanced",
+      "acc_mean": 0.7083333333333334,
+      "acc_std": 0.05892556509887896,
+      "hub_mean": 0.0,
+      "accs": [
+        0.625,
+        0.75,
+        0.75
+      ]
+    },
+    {
+      "corpus_size": 300,
+      "condition": "A_region_word_contrastive",
+      "acc_mean": 0.9083333333333332,
+      "acc_std": 0.03118047822311616,
+      "hub_mean": 0.0,
+      "accs": [
+        0.9,
+        0.875,
+        0.95
+      ]
+    },
+    {
+      "corpus_size": 300,
+      "condition": "B_plus_null_bin",
+      "acc_mean": 0.9083333333333332,
+      "acc_std": 0.03118047822311616,
+      "hub_mean": 0.0,
+      "accs": [
+        0.875,
+        0.9,
+        0.95
+      ]
+    },
+    {
+      "corpus_size": 300,
+      "condition": "C_plus_mutual_exclusivity",
+      "acc_mean": 0.9083333333333332,
+      "acc_std": 0.04249182927993988,
+      "hub_mean": 0.008333333333333333,
+      "accs": [
+        0.85,
+        0.95,
+        0.925
+      ]
+    },
+    {
+      "corpus_size": 300,
+      "condition": "D_balanced",
+      "acc_mean": 0.8666666666666667,
+      "acc_std": 0.04714045207910316,
+      "hub_mean": 0.0,
+      "accs": [
+        0.8,
+        0.9,
+        0.9
+      ]
+    },
+    {
+      "corpus_size": 1000,
+      "condition": "A_region_word_contrastive",
+      "acc_mean": 0.9833333333333334,
+      "acc_std": 0.023570226039551608,
+      "hub_mean": 0.0,
+      "accs": [
+        1.0,
+        0.95,
+        1.0
+      ]
+    },
+    {
+      "corpus_size": 1000,
+      "condition": "B_plus_null_bin",
+      "acc_mean": 0.9833333333333334,
+      "acc_std": 0.023570226039551608,
+      "hub_mean": 0.0,
+      "accs": [
+        1.0,
+        0.95,
+        1.0
+      ]
+    },
+    {
+      "corpus_size": 1000,
+      "condition": "C_plus_mutual_exclusivity",
+      "acc_mean": 0.9416666666666668,
+      "acc_std": 0.01178511301977575,
+      "hub_mean": 0.0,
+      "accs": [
+        0.95,
+        0.95,
+        0.925
+      ]
+    },
+    {
+      "corpus_size": 1000,
+      "condition": "D_balanced",
+      "acc_mean": 0.9166666666666666,
+      "acc_std": 0.011785113019775804,
+      "hub_mean": 0.0,
+      "accs": [
+        0.9,
+        0.925,
+        0.925
+      ]
+    },
+    {
+      "corpus_size": 3000,
+      "condition": "A_region_word_contrastive",
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "hub_mean": 0.0,
+      "accs": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "corpus_size": 3000,
+      "condition": "B_plus_null_bin",
+      "acc_mean": 1.0,
+      "acc_std": 0.0,
+      "hub_mean": 0.0,
+      "accs": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "corpus_size": 3000,
+      "condition": "C_plus_mutual_exclusivity",
+      "acc_mean": 0.9583333333333334,
+      "acc_std": 0.03118047822311617,
+      "hub_mean": 0.0,
+      "accs": [
+        0.925,
+        1.0,
+        0.95
+      ]
+    },
+    {
+      "corpus_size": 3000,
+      "condition": "D_balanced",
+      "acc_mean": 0.9499999999999998,
+      "acc_std": 0.020412414523193124,
+      "hub_mean": 0.0,
+      "accs": [
+        0.925,
+        0.975,
+        0.95
+      ]
+    }
+  ]
+}
