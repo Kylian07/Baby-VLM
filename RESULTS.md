@@ -56,4 +56,15 @@ No reliable benefit, and at large corpus sizes the exclusivity conditions are sl
 
 ## 4. Yu & Smith (2007) psychometric fit
 
-_Not yet run: `python scripts/run_simulation.py yusmith`._
+An unconstrained ideal observer is at ceiling on the original design at *every* memory-decay rate, so forgetting is not the limit that explains human performance. Limited encoding is: a learner registers only a few of the word-object pairs on offer per trial.
+
+| objects encoded / trial | 2×2 | 3×3 | 4×4 | RMSE vs human |
+|---|---|---|---|---|
+| unlimited | 0.983 | 1.000 | 1.000 | 0.292 |
+| 1 | 0.456 | 0.336 | 0.208 | 0.410 |
+| 2 | 0.983 | 0.725 | 0.517 | 0.066 |
+| 3 | 0.983 | 1.000 | 0.875 | 0.231 |
+| 4 | 0.983 | 1.000 | 1.000 | 0.292 |
+| **human** | 0.889 | 0.778 | 0.556 | — |
+
+Best fit: 2 objects encoded per trial (RMSE 0.066).
