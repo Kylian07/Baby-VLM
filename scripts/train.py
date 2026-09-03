@@ -45,6 +45,7 @@ from gavagai.data.corpora import (
     collate,
     load_records,
 )
+from gavagai.lexicon import CrossSituationalLexicon
 from gavagai.losses import gavagai_loss
 from gavagai.models import BabyVLM, ModelConfig
 
@@ -123,6 +124,11 @@ def main():
     ap.add_argument("--kappa", type=float, default=0.0)
     ap.add_argument("--null-prior", type=float, default=0.5)
     ap.add_argument("--tau", type=float, default=0.07)
+    ap.add_argument("--lexicon", action="store_true",
+                    help="maintain a persistent cross-situational lexicon and feed its "
+                         "accumulated PMI back into the transport cost")
+    ap.add_argument("--lexicon-prototypes", type=int, default=512)
+    ap.add_argument("--lexicon-warmup", type=int, default=200)
 
     ap.add_argument("--out", type=Path, default=Path("runs/default"))
     ap.add_argument("--eval-every", type=int, default=500)
@@ -141,6 +147,12 @@ def main():
     tok.save(args.out / "tokenizer.json")
 
     rho = None if args.rho < 0 else args.rho
+    lexicon = (
+        CrossSituationalLexicon(len(tok), n_prototypes=args.lexicon_prototypes,
+                                dim=cfg.proj_dim).to(device)
+        if args.lexicon and args.aux_weight > 0
+        else None
+    )
     loader = DataLoader(ds, batch_size=args.batch, shuffle=True, drop_last=True,
                         num_workers=args.workers, collate_fn=collate, persistent_workers=args.workers > 0)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wd)
@@ -155,7 +167,8 @@ def main():
         print(f"resumed from {args.resume} at step {start}")
 
     print(f"device={device}  params={model.n_parameters()/1e6:.1f}M  vocab={len(tok)}  "
-          f"aux_weight={args.aux_weight} rho={rho} use_null={args.use_null}")
+          f"aux_weight={args.aux_weight} rho={rho} use_null={args.use_null} "
+          f"lexicon={lexicon is not None}")
 
     history, step, t0 = [], start, time.time()
     it = iter(loader)
@@ -192,13 +205,21 @@ def main():
             if args.aux_weight > 0 and cmask.any():
                 words = model.word_embeddings_for_alignment(content)
                 smask = torch.ones(slots.shape[:2], dtype=torch.bool, device=device)
+                bonus = q = None
+                if lexicon is not None:
+                    q = lexicon.assign(slots.float().detach(), smask)
+                    bonus = lexicon.bonus(content, q, warmup=args.lexicon_warmup)
                 aux, stats = gavagai_loss(
                     words.float(), slots.float(), cmask, smask,
                     kappa=args.kappa, eps=eps, rho=rho, tau=args.tau,
                     null_prior=args.null_prior, use_null=args.use_null,
+                    lexicon_bonus=bonus,
                 )
                 aux_val = aux.detach()
                 loss = ar_loss + args.aux_weight * aux
+                if lexicon is not None:
+                    lexicon.update(content, q, stats["plan"], cmask,
+                                   slot_emb=slots.float().detach())
 
         opt.zero_grad(set_to_none=True)
         scaler.scale(loss).backward()
@@ -214,6 +235,8 @@ def main():
 
         if step % args.eval_every == 0 or step == args.steps:
             rec = {"step": step, "ar_loss": float(ar_loss.item())}
+            if lexicon is not None:
+                rec["known_words"] = int(lexicon.known_words().sum())
             if scenes is not None:
                 rec["pv_accuracy"] = synthetic_pv_accuracy(model, scenes, tok, device)
                 print(f"  [eval] step {step}  synthetic PV accuracy = {rec['pv_accuracy']:.3f} "

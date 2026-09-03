@@ -113,6 +113,10 @@ def gavagai_loss(
         "referential_mass": (w.sum() / word_mask.sum().clamp_min(1)).detach(),
         "plan_entropy": _plan_entropy(target, word_mask).detach(),
         "slot_usage_gini": _slot_gini(plan, slot_mask).detach(),
+        # The plan is returned so the caller can accumulate it into the
+        # cross-situational lexicon; it is already detached (E-step).
+        "plan": plan,
+        "referential": referential,
     }
 
     if not symmetric:

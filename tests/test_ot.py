@@ -4,10 +4,10 @@ import pytest
 
 from gavagai.ot import NEG_INF, referential_plan, sinkhorn_log, sinkhorn_scale
 
-torch.manual_seed(0)
 
 
 def test_row_marginal_is_exact():
+    torch.manual_seed(0)
     C = torch.randn(3, 5, 7)
     log_a = torch.log(torch.full((3, 5), 1 / 5))
     log_b = torch.log(torch.full((3, 7), 1 / 7))
@@ -16,6 +16,7 @@ def test_row_marginal_is_exact():
 
 
 def test_balanced_recovers_column_marginal():
+    torch.manual_seed(0)
     C = torch.randn(2, 6, 6)
     log_a = torch.log(torch.full((2, 6), 1 / 6))
     log_b = torch.log(torch.full((2, 6), 1 / 6))
@@ -25,6 +26,7 @@ def test_balanced_recovers_column_marginal():
 
 def test_rho_zero_is_exactly_row_softmax():
     """rho = 0 must reproduce the InfoNCE-style row-wise softmax bit for bit."""
+    torch.manual_seed(0)
     C = torch.randn(4, 5, 9)
     eps = 0.13
     log_a = torch.log(torch.full((4, 5), 1 / 5))
@@ -35,6 +37,7 @@ def test_rho_zero_is_exactly_row_softmax():
 
 
 def test_masked_rows_carry_no_mass():
+    torch.manual_seed(0)
     C = torch.randn(2, 4, 6)
     log_a = torch.log(torch.tensor([[0.5, 0.5, 0.0, 0.0], [1 / 3, 1 / 3, 1 / 3, 0.0]]).clamp_min(1e-30))
     log_a = torch.where(log_a < -60, torch.full_like(log_a, NEG_INF), log_a)
@@ -46,6 +49,7 @@ def test_masked_rows_carry_no_mass():
 
 def test_rho_interpolates_monotonically():
     """Larger rho => column marginals closer to the target (more exclusivity)."""
+    torch.manual_seed(0)
     C = torch.randn(1, 8, 8)
     log_a = torch.log(torch.full((1, 8), 1 / 8))
     log_b = torch.log(torch.full((1, 8), 1 / 8))
@@ -58,6 +62,7 @@ def test_rho_interpolates_monotonically():
 
 def test_null_bin_absorbs_unmatched_words():
     """A word with no good slot should be judged non-referential."""
+    torch.manual_seed(0)
     sim = torch.tensor([[[0.9, 0.1, 0.0], [-0.8, -0.7, -0.9]]])  # word 0 matches, word 1 does not
     plan, referential = referential_plan(sim, kappa=0.0, eps=0.05, rho=1.0, null_prior=0.5)
     assert referential[0, 0] > 0.9
@@ -86,6 +91,7 @@ def _lexicon_setup():
 
 def test_row_softmax_is_frequency_biased():
     """argmax_k p(k|w) collapses onto the frequent concept -- the hubness failure."""
+    torch.manual_seed(0)
     _, _, joint = _lexicon_setup()
     posterior = joint / joint.sum(0, keepdim=True)  # p(k|w)
     predicted = posterior.argmax(0)
@@ -94,6 +100,7 @@ def test_row_softmax_is_frequency_biased():
 
 def test_balanced_ot_recovers_true_lexicon():
     """Sinkhorn scaling ranks by PMI, whose argmax is argmax_k p(w|k) -- unbiased."""
+    torch.manual_seed(0)
     _, lik, joint = _lexicon_setup()
     scaled = sinkhorn_scale(joint)
     predicted = scaled.argmax(0)
@@ -104,6 +111,7 @@ def test_balanced_ot_recovers_true_lexicon():
 
 def test_sinkhorn_scaling_log_equals_pmi_up_to_constants():
     """log(D_r J D_c) = PMI(J) + u_i + v_j for some vectors u, v."""
+    torch.manual_seed(0)
     _, _, joint = _lexicon_setup()
     joint = joint.double()
     scaled = sinkhorn_scale(joint)
