@@ -251,7 +251,19 @@ Three things to note, including one against us.
 
 1. **The captioning objective alone is the weakest condition in every regime.** Adding a latent word↔slot variable is what buys the improvement; this is the core claim and it holds throughout.
 2. **Under realistic ambiguity the naive form of that variable is catastrophic** — 0.000 with zero variance across all three seeds, far below the 0.025 chance floor, which is total hub collapse. Forcing every word to ground is worse than not aligning at all. The null bin and the exclusivity constraint are what prevent it.
-3. **Against us:** the realistic regime is floor-limited at this budget. Ours (0.075 ± 0.061) is nominally best but the dispersion is larger than the gap, so it supports no claim beyond "does not collapse". The separation that *is* meaningful lives in the clean and moderate regimes.
+3. **Against us:** the realistic regime is floor-limited. Ours (0.075 ± 0.061) is nominally best but the dispersion is larger than the gap, so it supports no claim beyond "does not collapse". The separation that *is* meaningful lives in the clean and moderate regimes.
+
+**Is the realistic regime merely under-trained?** No. Re-running it with 3.3× the corpus (5000 episodes) and 3× the steps (1800) barely moves any condition (`results_realistic/sim_ar.json`):
+
+| condition | 1500 ep / 600 steps | 5000 ep / 1800 steps |
+|---|---|---|
+| AR only | 0.058 ± 0.031 | 0.058 ± 0.031 |
+| + naive align | 0.000 ± 0.000 | 0.025 ± 0.020 |
+| + null bin only | 0.017 ± 0.012 | 0.017 ± 0.024 |
+| + null + ME (ours) | 0.075 ± 0.061 | 0.092 ± 0.042 |
+| + null + balanced | 0.083 ± 0.042 | 0.075 ± 0.041 |
+
+The ordering is stable and the ceiling does not lift, so this regime is genuinely hard rather than budget-starved. With 80% non-referential speech, half of content words uttered while their referent is absent, and eight never-named background objects, there may simply not be enough referential signal for any of these methods at this model scale. That is worth stating plainly: it bounds what the method can be claimed to do.
 
 ### 6.2b A retraction: the contrastive "scope condition" was an artefact
 

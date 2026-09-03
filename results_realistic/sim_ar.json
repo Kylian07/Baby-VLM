@@ -1,0 +1,83 @@
+{
+  "args": {
+    "experiment": "ar",
+    "seeds": 3,
+    "steps": 1800,
+    "regimes": [
+      "realistic"
+    ],
+    "corpus_size": 5000,
+    "corpus_sizes": [
+      100,
+      300,
+      1000,
+      3000
+    ],
+    "feat_noise": 0.35,
+    "attend": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "out": "results_realistic"
+  },
+  "rows": [
+    {
+      "regime": "realistic",
+      "condition": "AR only (captioning)",
+      "acc_mean": 0.05833333333333334,
+      "acc_std": 0.031180478223116183,
+      "accs": [
+        0.1,
+        0.05,
+        0.025
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ naive align (rho=0,no null)",
+      "acc_mean": 0.025000000000000005,
+      "acc_std": 0.020412414523193152,
+      "accs": [
+        0.05,
+        0.025,
+        0.0
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null bin only",
+      "acc_mean": 0.016666666666666666,
+      "acc_std": 0.023570226039551587,
+      "accs": [
+        0.05,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null + ME (OURS)",
+      "acc_mean": 0.09166666666666667,
+      "acc_std": 0.042491829279939865,
+      "accs": [
+        0.15,
+        0.05,
+        0.075
+      ]
+    },
+    {
+      "regime": "realistic",
+      "condition": "+ null + balanced",
+      "acc_mean": 0.075,
+      "acc_std": 0.040824829046386304,
+      "accs": [
+        0.125,
+        0.025,
+        0.075
+      ]
+    }
+  ]
+}
