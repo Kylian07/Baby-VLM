@@ -94,7 +94,8 @@ the contrastive setting. That measurement was taken on a simulator where each ob
 single fixed appearance — so the task was not category learning, every condition scored
 1.000, and the comparison was vacuous. With multiple exemplars per object and held-out
 evaluation, sweeping `ρ` at a fixed 1000-episode corpus gives 0.275 (ρ=0) → **0.383**
-(ρ=0.1) → 0.350 (balanced), with the hub rate falling monotonically from 0.050 to 0.025.
+(ρ=0.1) → 0.350 (balanced), with the hub rate roughly halving from 0.050 to 0.025 between the
+endpoints (not monotone in between, and noisy at 3 seeds).
 
 The optimum is *interior*: full mutual exclusivity over-constrains, because real scenes do
 contain several plausible referents. See [`METHOD.md`](METHOD.md) §6.2b.

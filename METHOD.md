@@ -268,7 +268,7 @@ After giving each object multiple exemplars and evaluating on **held-out** ones,
 
 Two things worth more than the headline number.
 
-1. **The hub rate falls monotonically in `ρ`** (0.050 → 0.025). That is Proposition 2's mechanism showing up directly in the measurement: the fraction of words whose nearest referent is a never-named background object goes down as the column constraint tightens.
+1. **The hub rate trends down as `ρ` rises**, from 0.050 at `ρ=0` to 0.025 for `ρ ≥ 1`. It is *not* monotone across the sweep (0.050, 0.033, 0.050, 0.033, 0.042, 0.025, 0.025, 0.025) — at 3 seeds these mid-range wobbles are within noise — but the endpoints differ by a factor of two in the direction Proposition 2 predicts: the fraction of words whose nearest referent is a never-named background object halves as the column constraint tightens. More seeds are needed before leaning on this.
 2. **The optimum is interior**, at `ρ ≈ 0.1`, not at `ρ = ∞`. Full mutual exclusivity over-constrains: real scenes genuinely do contain several things one word could attach to, and forcing a near-permutation costs accuracy. The knob is a trade-off, which is what one would want from a cognitive constraint rather than a monotone trick.
 
 The general lesson, recorded because it nearly cost the whole result: **a negative result measured in a regime where every condition saturates is not a negative result.** The single-exemplar simulator was the bug, and both the original "no benefit" claim and the sample-efficiency table it rested on were consequences of it.

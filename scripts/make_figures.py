@@ -103,6 +103,57 @@ def fig_efficiency(results: Path, out: Path) -> bool:
     return True
 
 
+def fig_rho(results: Path, out: Path) -> bool:
+    """Accuracy and hub rate against the mutual-exclusivity strength.
+
+    The two curves together are the argument: hub rate falls monotonically as
+    the column constraint tightens (Proposition 2), while accuracy peaks at an
+    interior optimum because full exclusivity over-constrains.
+    """
+    src = results / "sim_rho.json"
+    if not src.exists():
+        return False
+    rows = json.loads(src.read_text())["rows"]
+
+    def key(r):
+        v = r["condition"].split("=", 1)[1]
+        return float("inf") if v == "None" else float(v)
+
+    rows = sorted(rows, key=key)
+    xs = [key(r) for r in rows]
+    finite = [x for x in xs if x != float("inf")]
+    xpos = list(range(len(rows)))
+    labels = ["0" if x == 0 else ("∞" if x == float("inf") else f"{x:g}") for x in xs]
+
+    fig, ax = plt.subplots(figsize=(8.2, 4))
+    ax.errorbar(xpos, [r["acc_mean"] for r in rows], yerr=[r["acc_std"] for r in rows],
+                marker="o", ms=5, capsize=3, color=PALETTE[0], label="lexicon accuracy")
+    ax.set_xticks(xpos)
+    ax.set_xticklabels(labels)
+    ax.set_xlabel("mutual-exclusivity strength  ρ"
+                  "\n(ρ=0 is exactly region–word contrastive learning)")
+    ax.set_ylabel("lexicon accuracy", color=PALETTE[0])
+    ax.spines[["top"]].set_visible(False)
+
+    ax2 = ax.twinx()
+    ax2.plot(xpos, [r["hub_mean"] for r in rows], marker="s", ms=4, ls="--",
+             color=PALETTE[1], label="hub rate")
+    ax2.set_ylabel("hub rate (words → an unnamed background object)", color=PALETTE[1], fontsize=9)
+    ax2.spines[["top"]].set_visible(False)
+    ax2.set_ylim(0, max(r["hub_mean"] for r in rows) * 1.6 + 1e-3)
+
+    best = max(rows, key=lambda r: r["acc_mean"])
+    ax.annotate("interior optimum", xy=(xpos[rows.index(best)], best["acc_mean"]),
+                xytext=(10, -28), textcoords="offset points", fontsize=8,
+                arrowprops=dict(arrowstyle="->", color="0.4", lw=0.8))
+    ax.set_title("Exclusivity strength: accuracy peaks, hubs trend down",
+                 loc="left", fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(out / "rho_sweep.png", dpi=180)
+    plt.close(fig)
+    return True
+
+
 def fig_training(runs: Path, out: Path) -> bool:
     hists = sorted(runs.glob("*/history.json")) if runs.exists() else []
     if not hists:
@@ -137,6 +188,7 @@ def main():
         "ar_ablation": fig_ar_ablation(args.results, args.out),
         "text_blind_audit": fig_text_blind(args.results, args.out),
         "efficiency": fig_efficiency(args.results, args.out),
+        "rho_sweep": fig_rho(args.results, args.out),
         "training": fig_training(args.runs, args.out),
     }
     for name, ok in made.items():
