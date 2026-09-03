@@ -253,24 +253,25 @@ Three things to note, including one against us.
 2. **Under realistic ambiguity the naive form of that variable is catastrophic** — 0.000 with zero variance across all three seeds, far below the 0.025 chance floor, which is total hub collapse. Forcing every word to ground is worse than not aligning at all. The null bin and the exclusivity constraint are what prevent it.
 3. **Against us:** the realistic regime is floor-limited at this budget. Ours (0.075 ± 0.061) is nominally best but the dispersion is larger than the gap, so it supports no claim beyond "does not collapse". The separation that *is* meaningful lives in the clean and moderate regimes.
 
-### 6.2b Scope condition — where the method does *not* help
+### 6.2b A retraction: the contrastive "scope condition" was an artefact
 
-We tried to break the mutual-exclusivity claim and partly succeeded, so we report it as a scope condition rather than discovering it in review.
+An earlier version of this document reported that the exclusivity constraint gave **no benefit** in the contrastive setting, and offered that as a scope condition: the batch-level InfoNCE draws negatives from the marginal and already suppresses hub collapse, so the column constraint had nothing left to fix.
 
-In the controlled contrastive setting, sweeping the corpus size from 100 to 3000 episodes, the ablation ladder (region–word contrastive → `+` null bin → `+` exclusivity → balanced) produced **no reliable benefit**, and at the largest corpus sizes the exclusivity conditions were marginally *worse*:
+**That measurement was invalid and the claim is withdrawn.** It was taken on a version of the simulator in which each object had a single canonical appearance vector. In that world the word-referent task is not category learning at all — a word only has to match one fixed vector — and *every* condition scored 1.000 at moderate corpus sizes. The comparison was vacuous, and the "no benefit" finding was a ceiling effect, not a property of contrastive training.
 
-| corpus | region–word contrastive | + null bin | + exclusivity | balanced |
-|---|---|---|---|---|
-| 100 | 0.692 | 0.700 | 0.700 | 0.708 |
-| 300 | 0.908 | 0.908 | 0.908 | 0.867 |
-| 1000 | 0.983 | 0.983 | 0.942 | — |
-| 3000 | 1.000 | 1.000 | 0.958 | 0.950 |
+After giving each object multiple exemplars and evaluating on **held-out** ones, the effect appears. Sweeping the mutual-exclusivity strength continuously at a fixed corpus of 1000 episodes:
 
-The explanation is that the M-step is a **batch-level InfoNCE whose negatives are drawn from the marginal**, and that term already suppresses hub collapse: the constraint of Proposition 2 has nothing left to fix. Measured `slot_usage_gini` is ≈0 in every condition, confirming no hub ever formed.
+| `ρ` | 0 (row softmax) | 0.02 | 0.05 | **0.1** | 0.3 | 1.0 | 3.0 | ∞ (balanced) |
+|---|---|---|---|---|---|---|---|---|
+| accuracy | 0.275 | 0.333 | 0.375 | **0.383** | 0.358 | 0.333 | 0.358 | 0.350 |
+| hub rate | 0.050 | 0.033 | 0.050 | 0.033 | 0.042 | 0.025 | 0.025 | 0.025 |
 
-This is precisely why the method is aimed at **autoregressively trained** baby VLMs. Every stage of BabyVLM-V2 is next-token prediction; there is no contrastive term anywhere, hence no marginal correction and no word↔region variable at all. §6.2 tests that setting directly.
+Two things worth more than the headline number.
 
-Small positive effects did appear in the contrastive setting under small batches (0.608 → 0.617) and a high non-referential rate (0.625 → 0.642), consistent with this account but not on their own decisive.
+1. **The hub rate falls monotonically in `ρ`** (0.050 → 0.025). That is Proposition 2's mechanism showing up directly in the measurement: the fraction of words whose nearest referent is a never-named background object goes down as the column constraint tightens.
+2. **The optimum is interior**, at `ρ ≈ 0.1`, not at `ρ = ∞`. Full mutual exclusivity over-constrains: real scenes genuinely do contain several things one word could attach to, and forcing a near-permutation costs accuracy. The knob is a trade-off, which is what one would want from a cognitive constraint rather than a monotone trick.
+
+The general lesson, recorded because it nearly cost the whole result: **a negative result measured in a regime where every condition saturates is not a negative result.** The single-exemplar simulator was the bug, and both the original "no benefit" claim and the sample-efficiency table it rested on were consequences of it.
 
 ### 6.3 Reporting standards
 * ≥3 seeds with dispersion on every number.

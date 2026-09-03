@@ -87,12 +87,17 @@ constraint are what prevent it.
 exceeds the gap between the conditions that work. The meaningful separation is in the clean
 and moderate regimes.
 
-### A scope condition we established by trying to break it
+### A claim we retracted
 
-In controlled simulation the exclusivity constraint gives **no benefit** when a strong
-batch-level InfoNCE term is already present: that term's negatives come from the marginal
-and already suppress hub collapse. This is reported, not hidden — it is why the method is
-aimed at *autoregressively* trained baby VLMs, which have no such term.
+An earlier version of this work reported that the exclusivity constraint gave no benefit in
+the contrastive setting. That measurement was taken on a simulator where each object had a
+single fixed appearance — so the task was not category learning, every condition scored
+1.000, and the comparison was vacuous. With multiple exemplars per object and held-out
+evaluation, sweeping `ρ` at a fixed 1000-episode corpus gives 0.275 (ρ=0) → **0.383**
+(ρ=0.1) → 0.350 (balanced), with the hub rate falling monotonically from 0.050 to 0.025.
+
+The optimum is *interior*: full mutual exclusivity over-constrains, because real scenes do
+contain several plausible referents. See [`METHOD.md`](METHOD.md) §6.2b.
 
 ---
 
