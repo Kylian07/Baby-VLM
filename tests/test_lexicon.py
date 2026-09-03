@@ -103,3 +103,43 @@ def test_update_accumulates_alignment_mass_and_moves_prototypes():
     assert int(lex.n_updates) == 1
     assert not torch.allclose(before, lex.prototypes)
     assert torch.allclose(lex.prototypes.norm(dim=-1), torch.ones(6), atol=1e-5)
+
+
+def test_lexicon_closes_the_loop_with_the_training_objective():
+    """Integration check for the exact sequence scripts/train.py runs.
+
+    assign -> bonus -> gavagai_loss(lexicon_bonus=...) -> update, repeatedly.
+    This path had no coverage: the lexicon was implemented and wired into
+    training without anything exercising the round trip, so a shape or dtype
+    mismatch between the plan and the accumulator would only have surfaced in a
+    GPU run.
+    """
+    torch.manual_seed(0)
+    from gavagai.losses import gavagai_loss
+
+    vocab, k, d, b, n, m = 30, 16, 24, 5, 6, 7
+    lex = CrossSituationalLexicon(vocab_size=vocab, n_prototypes=k, dim=d)
+    words = torch.nn.Parameter(F.normalize(torch.randn(b, n, d), dim=-1))
+    wmask = torch.ones(b, n, dtype=torch.bool)
+    smask = torch.ones(b, m, dtype=torch.bool)
+
+    seen_bonus = False
+    for step in range(6):
+        slots = F.normalize(torch.randn(b, m, d), dim=-1)
+        q = lex.assign(slots, smask)
+        ids = torch.randint(0, vocab, (b, n))
+        bonus = lex.bonus(ids, q, warmup=2)
+        if bonus is not None:
+            seen_bonus = True
+            assert bonus.shape == (b, n, m)
+        loss, stats = gavagai_loss(
+            words, slots, wmask, smask, rho=1.0, lexicon_bonus=bonus
+        )
+        assert torch.isfinite(loss)
+        loss.backward()
+        lex.update(ids, q, stats["plan"], wmask, slot_emb=slots)
+
+    assert seen_bonus, "lexicon never produced a bonus after warmup"
+    assert int(lex.n_updates) == 6
+    assert lex.counts.sum() > 0
+    assert torch.isfinite(lex.pmi()).all()
