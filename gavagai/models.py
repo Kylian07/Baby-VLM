@@ -154,3 +154,80 @@ class GroundingModel(nn.Module):
 
     def n_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
+
+
+class CaptionDecoder(nn.Module):
+    """Small autoregressive decoder conditioned on image slots as a prefix.
+
+    This mirrors the LLaVA-style recipe BabyVLM-V2 actually uses -- visual
+    tokens are prepended and the utterance is predicted left to right -- at a
+    size that trains from scratch on a T4.  It is deliberately the *baseline*:
+    the point of the experiment is that this objective alone supplies no
+    pressure to bind a particular word to a particular region.
+    """
+
+    def __init__(self, cfg: ModelConfig, width: int = 256, depth: int = 4, heads: int = 4,
+                 max_len: int = 32):
+        super().__init__()
+        self.width = width
+        self.max_len = max_len
+        self.tok = nn.Embedding(cfg.vocab_size, width)
+        self.pos = nn.Parameter(torch.zeros(1, max_len + cfg.slot_grid**2, width))
+        nn.init.trunc_normal_(self.pos, std=0.02)
+        nn.init.normal_(self.tok.weight, std=0.02)
+        self.connector = nn.Sequential(
+            nn.Linear(cfg.proj_dim, width), nn.GELU(), nn.Linear(width, width)
+        )
+        self.blocks = nn.ModuleList(_Block(width, heads, cfg.dropout) for _ in range(depth))
+        self.norm = nn.LayerNorm(width)
+        self.head = nn.Linear(width, cfg.vocab_size, bias=False)
+        self.head.weight = self.tok.weight  # tied
+
+    def forward(self, slots: torch.Tensor, tokens: torch.Tensor) -> torch.Tensor:
+        """Return logits over the utterance positions.
+
+        Args:
+            slots: ``(B, M, proj_dim)`` visual prefix.
+            tokens: ``(B, L)`` utterance token ids.
+        """
+        prefix = self.connector(slots)
+        x = torch.cat([prefix, self.tok(tokens)], dim=1)
+        x = x + self.pos[:, : x.shape[1]]
+
+        n = x.shape[1]
+        m = slots.shape[1]
+        # Causal over text; the visual prefix is fully visible to everything.
+        mask = torch.full((n, n), float("-inf"), device=x.device).triu(1)
+        mask[:, :m] = 0.0
+        for blk in self.blocks:
+            h = blk.n1(x)
+            x = x + blk.attn(h, h, h, attn_mask=mask, need_weights=False)[0]
+            x = x + blk.mlp(blk.n2(x))
+        return self.head(self.norm(x[:, m:]))
+
+
+class BabyVLM(nn.Module):
+    """Grounding encoder + caption decoder: the full model used in `scripts/train.py`."""
+
+    def __init__(self, cfg: ModelConfig, decoder: bool = True):
+        super().__init__()
+        self.cfg = cfg
+        self.encoder = GroundingModel(cfg)
+        self.decoder = CaptionDecoder(cfg) if decoder else None
+        self.align_proj = (
+            nn.Linear(self.decoder.width, cfg.proj_dim) if decoder else None
+        )
+
+    def word_embeddings_for_alignment(self, word_ids: torch.Tensor) -> torch.Tensor:
+        """Word vectors used by the alignment loss.
+
+        When a decoder is present these are its (tied) token embeddings, so the
+        auxiliary loss shapes exactly the parameters the captioning objective
+        already owns and the two objectives cannot be trivially decoupled.
+        """
+        if self.decoder is None:
+            return self.encoder.encode_words(word_ids)
+        return F.normalize(self.align_proj(self.decoder.tok(word_ids)), dim=-1)
+
+    def n_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters())

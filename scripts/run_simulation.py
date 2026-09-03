@@ -12,6 +12,9 @@ Experiments
 ``ladder``      Ablation over the ingredients at one corpus size.
 ``rho``         Sweep the mutual-exclusivity strength continuously from the
                 region-word contrastive baseline (rho=0) to balanced OT.
+``ar``          **Headline.**  Autoregressive captioning (the objective BabyVLM-V2
+                actually uses) with and without the referential-alignment
+                auxiliary loss, swept across referential ambiguity.
 ``yusmith``     Fit the ideal observer's one free parameter (memory decay) to
                 human accuracy in Yu & Smith (2007).
 """
@@ -26,10 +29,12 @@ from pathlib import Path
 import numpy as np
 
 from gavagai.sim import (
+    ARConfig,
     EmbedConfig,
     LearnerConfig,
     ReferentialWorld,
     WorldConfig,
+    run_ar_learner,
     run_embedding_learner,
     run_learner,
 )
@@ -51,8 +56,13 @@ DEFAULT_WORLD = dict(
     freq_skew=1.0,
     n_filler_words=30,
     n_feature_families=10,
-    family_spread=0.4,
+    family_spread=0.7,
+    n_exemplars=8,
+    within_spread=0.25,
 )
+# Calibrated so the captioning baseline sits near 0.64 in the clean regime:
+# far from both the 0.025 chance floor and the ceiling, so conditions can
+# separate in either direction.
 
 CONDITIONS = {
     "A_region_word_contrastive": dict(rho=0.0, use_null=False),
@@ -153,7 +163,55 @@ def exp_yusmith(args):
     return rows
 
 
+# Ambiguity regimes.  "realistic" reflects the properties Vong et al. report for
+# caregiver speech in SAYCam: the named referent is visible only a minority of
+# the time, most tokens are non-referential, and a handful of never-named
+# objects (hands, floor, table) are in almost every frame.
+AR_WORLDS = {
+    "clean":     dict(null_rate=0.2, absent_ref_prob=0.0, n_background=3),
+    "moderate":  dict(null_rate=0.5, absent_ref_prob=0.3, n_background=3),
+    "realistic": dict(null_rate=0.8, absent_ref_prob=0.5, n_background=8),
+}
+
+AR_CONDITIONS = {
+    "AR only (captioning)":        dict(aux_weight=0.0),
+    "+ naive align (rho=0,no null)": dict(aux_weight=1.0, rho=0.0, use_null=False),
+    "+ null bin only":             dict(aux_weight=1.0, rho=0.0, use_null=True),
+    "+ null + ME (OURS)":          dict(aux_weight=1.0, rho=1.0, use_null=True),
+    "+ null + balanced":           dict(aux_weight=1.0, rho=None, use_null=True),
+}
+
+
+def exp_ar(args):
+    """Captioning objective +/- referential alignment, across ambiguity regimes.
+
+    Readout is picture-vocabulary accuracy on *held-out* exemplars of each
+    category, so it measures generalisation rather than recall of one vector.
+    """
+    print("=== autoregressive captioning +/- referential alignment ===")
+    print(f"    corpus={args.corpus_size} episodes, {args.seeds} seeds, held-out exemplar readout")
+    rows = []
+    for wname, wkw in AR_WORLDS.items():
+        print(f"\n  [{wname}] {wkw}")
+        for cname, ckw in AR_CONDITIONS.items():
+            accs = []
+            for s in range(args.seeds):
+                world = ReferentialWorld(WorldConfig(seed=s, **(DEFAULT_WORLD | wkw)))
+                res = run_ar_learner(
+                    world,
+                    ARConfig(steps=args.steps, seed=s, feat_noise=args.feat_noise, **ckw),
+                    corpus=world.sample_corpus(args.corpus_size),
+                )
+                accs.append(res["accuracy"])
+            rec = dict(regime=wname, condition=cname, acc_mean=float(np.mean(accs)),
+                       acc_std=float(np.std(accs)), accs=accs)
+            rows.append(rec)
+            print(f"    {cname:32s} {rec['acc_mean']:.3f} +- {rec['acc_std']:.3f}", flush=True)
+    return rows
+
+
 EXPERIMENTS = {
+    "ar": exp_ar,
     "efficiency": exp_efficiency,
     "ladder": exp_ladder,
     "rho": exp_rho,
@@ -166,6 +224,7 @@ def main():
     ap.add_argument("experiment", choices=sorted(EXPERIMENTS))
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--steps", type=int, default=400)
+    ap.add_argument("--chance-note", action="store_true", help="print the chance floor")
     ap.add_argument("--corpus-size", type=int, default=500)
     ap.add_argument("--corpus-sizes", type=int, nargs="+", default=[100, 300, 1000, 3000])
     ap.add_argument("--feat-noise", type=float, default=0.35)

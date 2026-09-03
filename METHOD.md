@@ -26,7 +26,32 @@ The model is at or near **ceiling** on every task that reduces to *"which of the
 
 This is not a failure of perception. The visual representation is evidently good enough to support fine-grained instance matching. It is a failure of **referential alignment** — and word learning is the single capacity that human infants most conspicuously *do* possess at this age.
 
-**Claim of this work.** The failure is caused by the alignment mechanism inside the standard contrastive/captioning objective, it is diagnosable, and it is fixable at negligible compute cost by replacing the within-episode softmax assignment with a *balanced, unbalanced-in-the-null-direction* optimal transport step plus a persistent cross-situational lexicon.
+**Claims of this work, in decreasing order of certainty.**
+
+1. **Part of the dissociation is a benchmark artefact** (§1.1). Some of the tasks the baby model aces can be answered without reading the question at all. This is a measurement, not a bet.
+2. **The residual gap is real and is about referential binding** (§2). The tasks that survive the audit are exactly those needing a word→referent mapping, and the autoregressive objective used to train the baby model contains no term that supplies binding pressure.
+3. **It is fixable cheaply** (§3) by adding the missing latent variable: a semi-relaxed optimal-transport alignment between words and object slots, with a null bin for non-referential speech. This is the part that is a bet, and §6.2 states the scope condition under which it does *not* help.
+
+---
+
+## 1.1 First: are these tasks measuring grounding?
+
+Before attributing a score to a model's competence, it is worth asking what a *trivial* system scores. `scripts/text_blind_audit.py` answers each multiple-choice item with a 32×32 luminance + RGB-histogram descriptor — no training, no network, and crucially **no access to the prompt**. For items shaped "here is X, which of (A)(B)(C) is the same X?", it simply returns the option most similar to the query image.
+
+Pooled over the public SAYCam / BabyView / Ego4D samples:
+
+| task | text-blind image match | baby model | human | chance |
+|---|---|---|---|---|
+| **Left/Right** | **1.00** (24/24, 95% CI [0.86, 1.00]) | 96.4 | 94.5 | 33.3 |
+| NIH Spatial | **1.00** (10/10, CI [0.72, 1.00]) | 92.8 | 100 | 33.3 |
+| spatialdetails (SAYCam variant) | 0.33 (CI [0.10, 0.70]) | — | — | 33.3 |
+| Picture Vocabulary | n/a (no query image to match against) | 32.4 | 91.8 | 25.0 |
+
+Left/Right — where the baby model scores **above the human ceiling** — is solved outright by a matcher that never reads the question. Picture Vocabulary is not, which is the control that shows the baseline is not simply always winning.
+
+Two consequences. First, a chunk of the apparent "excellent perception, no word knowledge" dissociation is a property of the tasks rather than of the model. Second, the *interesting* subset of DevCV Toolbox — the part that actually demands grounding — is smaller than it appears, and that subset is where the baby model sits near chance.
+
+**Caveat stated up front.** `n` is 6–24 per task on the bundled website samples, hence Wilson intervals throughout. These numbers must be regenerated on the full public Ego4D release before being quoted; the script does so in one command.
 
 ---
 
@@ -210,6 +235,25 @@ SAYCam is Databrary-gated. The BabyVLM-V2 authors released a **fully public Ego4
 * Zero-shot **Picture Vocabulary** and **Localization** on DevCV-Toolbox-Ego4D. Localization is free for us: the transport plan gives word→slot attribution with no box supervision, and slot→patch centroid gives a quadrant.
 * A SAYCam adapter ships in the repo but is not on the critical path.
 
+### 6.2b Scope condition — where the method does *not* help
+
+We tried to break the mutual-exclusivity claim and partly succeeded, so we report it as a scope condition rather than discovering it in review.
+
+In the controlled contrastive setting, sweeping the corpus size from 100 to 3000 episodes, the ablation ladder (region–word contrastive → `+` null bin → `+` exclusivity → balanced) produced **no reliable benefit**, and at the largest corpus sizes the exclusivity conditions were marginally *worse*:
+
+| corpus | region–word contrastive | + null bin | + exclusivity | balanced |
+|---|---|---|---|---|
+| 100 | 0.692 | 0.700 | 0.700 | 0.708 |
+| 300 | 0.908 | 0.908 | 0.908 | 0.867 |
+| 1000 | 0.983 | 0.983 | 0.942 | — |
+| 3000 | 1.000 | 1.000 | 0.958 | 0.950 |
+
+The explanation is that the M-step is a **batch-level InfoNCE whose negatives are drawn from the marginal**, and that term already suppresses hub collapse: the constraint of Proposition 2 has nothing left to fix. Measured `slot_usage_gini` is ≈0 in every condition, confirming no hub ever formed.
+
+This is precisely why the method is aimed at **autoregressively trained** baby VLMs. Every stage of BabyVLM-V2 is next-token prediction; there is no contrastive term anywhere, hence no marginal correction and no word↔region variable at all. §6.2 tests that setting directly.
+
+Small positive effects did appear in the contrastive setting under small batches (0.608 → 0.617) and a high non-referential rate (0.625 → 0.642), consistent with this account but not on their own decisive.
+
 ### 6.3 Reporting standards
 * ≥3 seeds with dispersion on every number.
 * The `ρ = 0` baseline is *our own code path*, so no baseline is disadvantaged by re-implementation.
@@ -224,3 +268,6 @@ SAYCam is Databrary-gated. The BabyVLM-V2 authors released a **fully public Ego4
 3. **The vocabulary-spurt result is a prediction under test**, not a theorem, and may fail.
 4. **`η` (the null prior) is a hyper-parameter**, not learned from caregiver-speech statistics. Estimating it from CHILDES is future work.
 5. **Prop. 2 shows hub collapse is infeasible, not that the optimum is the true lexicon.** Correctness of the recovered lexicon is an empirical claim, evidenced in §6.
+6. **The exclusivity constraint provides no measured benefit when a batch-level contrastive term is present** (§6.2b). The method's value rests on the autoregressive setting, where that term is absent.
+7. **The text-blind audit rests on small samples** (n = 6–24 per task). It is reported with Wilson intervals and must be regenerated on the full public release.
+8. **`kappa` is a hyper-parameter, not learned.** It is read only inside the no-grad E-step and so receives no gradient — Danskin's theorem working as intended, not a bug. It is swept.

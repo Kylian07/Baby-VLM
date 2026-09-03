@@ -71,6 +71,20 @@ class WorldConfig:
     background_name_prob: float = 0.02
     """Probability a present background object actually gets named."""
 
+    n_exemplars: int = 1
+    """Distinct appearances per object category seen during training.
+
+    With one exemplar per object the task degenerates: a word only has to match
+    a single fixed vector, and every method solves it.  Real word learning is
+    *category* learning -- a word must cover many varied instances and
+    generalise to unseen ones -- which is what makes referential noise costly."""
+
+    n_eval_exemplars: int = 4
+    """Held-out appearances per category, used only at readout."""
+
+    within_spread: float = 0.6
+    """Appearance variation within a category, relative to the category centroid."""
+
     absent_ref_prob: float = 0.0
     """Probability of uttering a real object's name while that object is NOT in
     the scene ("ball!" as the ball rolls out of view).  Vong et al. report the
@@ -124,7 +138,7 @@ class ReferentialWorld:
         return [self.sample_trial() for _ in range(n_episodes)]
 
     def appearance_prototypes(self, feat_dim: int, generator=None) -> "torch.Tensor":
-        """Appearance vector for every object, optionally clustered into families."""
+        """Category centroid for every object, optionally clustered into families."""
         cfg = self.cfg
         if cfg.n_feature_families <= 0:
             return F.normalize(torch.randn(self.n_objects, feat_dim, generator=generator), dim=-1)
@@ -134,6 +148,19 @@ class ReferentialWorld:
         assign = torch.arange(self.n_objects) % cfg.n_feature_families
         jitter = torch.randn(self.n_objects, feat_dim, generator=generator)
         return F.normalize(fams[assign] + cfg.family_spread * jitter, dim=-1)
+
+    def appearance_bank(self, feat_dim: int, generator=None) -> "torch.Tensor":
+        """``(n_objects, n_exemplars + n_eval_exemplars, feat_dim)`` appearance bank.
+
+        Training may only use the first ``n_exemplars`` slices; the remainder are
+        held out, so the readout measures generalisation to unseen instances of
+        a category rather than recall of a single stored vector.
+        """
+        cfg = self.cfg
+        centroids = self.appearance_prototypes(feat_dim, generator=generator)
+        total = cfg.n_exemplars + cfg.n_eval_exemplars
+        jitter = torch.randn(self.n_objects, total, feat_dim, generator=generator)
+        return F.normalize(centroids.unsqueeze(1) + cfg.within_spread * jitter, dim=-1)
 
     def sample_trial(self) -> tuple[np.ndarray, np.ndarray]:
         cfg = self.cfg
@@ -335,7 +362,8 @@ def run_embedding_learner(
     g = torch.Generator().manual_seed(cfg.seed + 1)
     rng = np.random.default_rng(cfg.seed + 2)
 
-    protos = world.appearance_prototypes(cfg.feat_dim, generator=g).to(dev)
+    bank = world.appearance_bank(cfg.feat_dim, generator=g).to(dev)
+    n_tr = world.cfg.n_exemplars
     word_feats = None
     if cfg.shared_word_encoder:
         wf = torch.zeros(world.vocab_size, cfg.word_feat_dim)
@@ -356,7 +384,8 @@ def run_embedding_learner(
         w_idx, mask_w = _pad(list(ws), dev)
         o_idx, mask_s = _pad(list(os_), dev)
 
-        feats = protos[o_idx]
+        ex = torch.as_tensor(rng.integers(n_tr, size=o_idx.shape), device=dev)
+        feats = bank[o_idx, ex]
         feats = F.normalize(feats + cfg.feat_noise * torch.randn_like(feats), dim=-1)
 
         loss, stats = gavagai_loss(
@@ -369,40 +398,47 @@ def run_embedding_learner(
         opt.step()
 
         if (step + 1) % cfg.eval_every == 0 or step == cfg.steps - 1:
-            curve.append((step + 1, _embed_accuracy(model, protos, world)))
+            curve.append((step + 1, _embed_accuracy(model, bank, world)))
             gini_curve.append((step + 1, float(stats["slot_usage_gini"])))
             ref_curve.append((step + 1, float(stats["referential_mass"])))
 
     return {
-        "accuracy": _embed_accuracy(model, protos, world),
-        "hub_rate": _hub_rate(model, protos, world),
+        "accuracy": _embed_accuracy(model, bank, world),
+        "hub_rate": _hub_rate(model, bank, world),
         "curve": curve,
         "gini_curve": gini_curve,
         "ref_curve": ref_curve,
         "model": model,
-        "protos": protos,
+        "bank": bank,
     }
 
 
+def _held_out(bank, world):
+    """Mean embedding target per object, built only from held-out exemplars."""
+    return bank[:, world.cfg.n_exemplars :]
+
+
 @torch.no_grad()
-def _embed_accuracy(model, protos, world) -> float:
-    """Picture-vocabulary readout: for each real word, pick its referent."""
-    obj = model.slots(protos)
-    words = model.words(torch.arange(world.cfg.n_words, device=protos.device))
+def _embed_accuracy(model, bank, world) -> float:
+    """Picture-vocabulary readout on *held-out* exemplars of each category."""
+    ho = _held_out(bank, world)
+    obj = F.normalize(model.slots(ho.reshape(-1, ho.shape[-1])).reshape(*ho.shape[:2], -1).mean(1), dim=-1)
+    words = model.words(torch.arange(world.cfg.n_words, device=bank.device))
     pred = (words @ obj.t()).argmax(1).cpu().numpy()
     return float((pred == world.truth).mean())
 
 
 @torch.no_grad()
-def _hub_rate(model, protos, world) -> float:
+def _hub_rate(model, bank, world) -> float:
     """Fraction of words whose nearest referent is a never-named background object.
 
     This is the direct measure of hub collapse.
     """
     if world.cfg.n_background == 0:
         return 0.0
-    obj = model.slots(protos)
-    words = model.words(torch.arange(world.cfg.n_words, device=protos.device))
+    ho = _held_out(bank, world)
+    obj = F.normalize(model.slots(ho.reshape(-1, ho.shape[-1])).reshape(*ho.shape[:2], -1).mean(1), dim=-1)
+    words = model.words(torch.arange(world.cfg.n_words, device=bank.device))
     pred = (words @ obj.t()).argmax(1).cpu().numpy()
     return float((pred >= world.cfg.n_words).mean())
 
@@ -470,7 +506,8 @@ def run_ar_learner(world: ReferentialWorld, cfg: ARConfig, corpus: list | None =
     g = torch.Generator().manual_seed(cfg.seed + 1)
     rng = np.random.default_rng(cfg.seed + 2)
 
-    protos = world.appearance_prototypes(cfg.feat_dim, generator=g).to(dev)
+    bank = world.appearance_bank(cfg.feat_dim, generator=g).to(dev)
+    n_tr = world.cfg.n_exemplars
     model = _CaptionModel(world.vocab_size, cfg.feat_dim, cfg.dim).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
 
@@ -484,7 +521,8 @@ def run_ar_learner(world: ReferentialWorld, cfg: ARConfig, corpus: list | None =
         w_idx, mask_w = _pad(list(ws), dev)
         o_idx, mask_s = _pad(list(os_), dev)
 
-        feats = protos[o_idx]
+        ex = torch.as_tensor(rng.integers(n_tr, size=o_idx.shape), device=dev)
+        feats = bank[o_idx, ex]
         feats = F.normalize(feats + cfg.feat_noise * torch.randn_like(feats), dim=-1)
         slots = model.slots(feats)
 
@@ -508,15 +546,16 @@ def run_ar_learner(world: ReferentialWorld, cfg: ARConfig, corpus: list | None =
         opt.step()
 
         if (step + 1) % cfg.eval_every == 0 or step == cfg.steps - 1:
-            curve.append((step + 1, _ar_accuracy(model, protos, world)))
+            curve.append((step + 1, _ar_accuracy(model, bank, world)))
 
-    return {"accuracy": _ar_accuracy(model, protos, world), "curve": curve, "model": model}
+    return {"accuracy": _ar_accuracy(model, bank, world), "curve": curve, "model": model}
 
 
 @torch.no_grad()
-def _ar_accuracy(model, protos, world) -> float:
-    """Picture-vocabulary readout from the vocabulary head rows."""
-    obj = model.slots(protos)
-    words = model.word_embeddings(torch.arange(world.cfg.n_words, device=protos.device))
+def _ar_accuracy(model, bank, world) -> float:
+    """Picture-vocabulary readout from the vocabulary head rows, held-out exemplars."""
+    ho = _held_out(bank, world)
+    obj = F.normalize(model.slots(ho.reshape(-1, ho.shape[-1])).reshape(*ho.shape[:2], -1).mean(1), dim=-1)
+    words = model.word_embeddings(torch.arange(world.cfg.n_words, device=bank.device))
     pred = (words @ obj.t()).argmax(1).cpu().numpy()
     return float((pred == world.truth).mean())

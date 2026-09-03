@@ -39,6 +39,7 @@ def sinkhorn_log(
     rho: float | None = None,
     n_iter: int = 50,
     tol: float = 1e-7,
+    check_every: int = 10,
 ) -> torch.Tensor:
     """Semi-relaxed entropic OT in the log domain.
 
@@ -57,7 +58,11 @@ def sinkhorn_log(
             ``0.0`` disables the column constraint and yields a row-wise
             softmax.
         n_iter: maximum Sinkhorn iterations.
-        tol: early-stopping threshold on the max potential update.
+        tol: early-stopping threshold on the max potential update.  Set to 0 to
+            disable the check entirely.
+        check_every: how often to test convergence.  Each test calls ``.item()``,
+            which forces a host synchronisation and destroys GPU throughput if
+            done every iteration, so it is done sparingly.
 
     Returns:
         ``log_P`` of shape ``(..., N, M)``.  ``exp(log_P).sum(-1) == exp(log_a)``
@@ -77,7 +82,7 @@ def sinkhorn_log(
     f = torch.zeros_like(log_a)
     g = torch.zeros_like(log_b)
 
-    for _ in range(n_iter):
+    for it in range(n_iter):
         # Row update (hard):  f_i = eps*log a_i - eps*LSE_j((g_j - C_ij)/eps)
         f_new = eps * log_a - eps * torch.logsumexp(
             (g.unsqueeze(-2) - cost) / eps, dim=-1
@@ -94,15 +99,16 @@ def sinkhorn_log(
             )
             g_new = torch.nan_to_num(g_new, nan=0.0, neginf=NEG_INF)
 
-        delta = max(
-            (f_new - f).abs().max().item() if f.numel() else 0.0,
-            (g_new - g).abs().max().item() if g.numel() else 0.0,
-        )
+        should_check = tol > 0 and (it + 1) % check_every == 0
+        if should_check:
+            delta = torch.maximum(
+                (f_new - f).abs().amax(), (g_new - g).abs().amax()
+            ).item()
         f, g = f_new, g_new
-        if delta < tol:
-            break
         if damp == 0.0:
             break  # single closed-form step; iterating changes nothing
+        if should_check and delta < tol:
+            break
 
     log_p = (f.unsqueeze(-1) + g.unsqueeze(-2) - cost) / eps
     return torch.nan_to_num(log_p, nan=NEG_INF, neginf=NEG_INF)

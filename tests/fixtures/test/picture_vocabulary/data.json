@@ -1,0 +1,1 @@
+[{"id": "pv_0", "conversations": [{"from": "human", "value": "<image><image><image><image>\n Touch the image of 'comb' (A) the first image (B) the second image (C) the third image (D) the fourth image."}, {"from": "gpt", "value": "B"}], "image": ["images/pv_0_0.png", "images/pv_0_1.png", "images/pv_0_2.png", "images/pv_0_3.png"]}]
