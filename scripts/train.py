@@ -57,7 +57,6 @@ def build_data(args):
             null_rate=args.null_rate, absent_rate=args.absent_rate,
         )
         tok = WordTokenizer.build(scenes.texts(), min_count=1, max_len=args.max_len)
-        records = [{"image": None, "text": None}] * 0  # unused
 
         class _Wrap(torch.utils.data.Dataset):
             def __len__(self):

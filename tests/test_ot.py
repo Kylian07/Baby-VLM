@@ -1,6 +1,5 @@
 """Correctness tests for the OT core, including the two claims the paper rests on."""
 import torch
-import pytest
 
 from gavagai.ot import NEG_INF, referential_plan, sinkhorn_log, sinkhorn_scale
 

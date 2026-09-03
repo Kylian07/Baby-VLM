@@ -165,7 +165,7 @@ def load_records(spec: str, root=None, limit: int | None = None) -> list[dict]:
     """Load ``{"image", "text"}`` records from a json/jsonl file."""
     path = Path(spec)
     if path.suffix == ".jsonl":
-        recs = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+        recs = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     else:
         recs = json.loads(path.read_text())
     out = []

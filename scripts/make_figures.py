@@ -121,7 +121,6 @@ def fig_rho(results: Path, out: Path) -> bool:
 
     rows = sorted(rows, key=key)
     xs = [key(r) for r in rows]
-    finite = [x for x in xs if x != float("inf")]
     xpos = list(range(len(rows)))
     labels = ["0" if x == 0 else ("∞" if x == float("inf") else f"{x:g}") for x in xs]
 

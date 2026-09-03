@@ -34,8 +34,10 @@ def test_balanced_assignment_spreads_over_prototypes():
     plain = torch.softmax(
         slots.reshape(-1, 24) @ lex.prototypes.t() / lex.assign_temp, dim=-1
     ).sum(0)
-    # Coefficient of variation: lower means more evenly used.
-    cv = lambda x: (x.std() / x.mean()).item()
+    def cv(x):
+        """Coefficient of variation: lower means the codebook is used more evenly."""
+        return (x.std() / x.mean()).item()
+
     assert cv(balanced) < cv(plain), (cv(balanced), cv(plain))
 
 
