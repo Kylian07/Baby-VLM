@@ -64,6 +64,29 @@ Two knobs generate the whole family — `ρ = 0` provably reduces to the row-wis
 standard region–word contrastive learning, so every ablation changes one scalar rather than
 swapping code paths. See [`METHOD.md`](METHOD.md) for the derivation and propositions.
 
+### Measured (controlled simulation, 3 seeds, chance = 0.025)
+
+Picture-vocabulary accuracy on **held-out exemplars** of each category, across three
+referential-ambiguity regimes. Full numbers in [`RESULTS.md`](RESULTS.md).
+
+| condition | clean | moderate | realistic |
+|---|---|---|---|
+| AR only (captioning) | 0.392 | 0.242 | 0.058 |
+| + naive align (`ρ=0`, no null) | 0.650 | 0.358 | **0.000** |
+| + null bin only | 0.658 | 0.358 | 0.017 |
+| + null + ME (**ours**) | **0.700** | **0.400** | 0.075 |
+
+![AR ablation](docs/figures/ar_ablation.png)
+
+The captioning objective alone is weakest in every regime. Under realistic ambiguity the
+*naive* form of the alignment collapses to **0.000 with zero variance across all three
+seeds** — total hub collapse, worse than adding nothing. The null bin and the exclusivity
+constraint are what prevent it.
+
+**Against us:** the realistic regime is floor-limited at this budget, so its dispersion
+exceeds the gap between the conditions that work. The meaningful separation is in the clean
+and moderate regimes.
+
 ### A scope condition we established by trying to break it
 
 In controlled simulation the exclusivity constraint gives **no benefit** when a strong
