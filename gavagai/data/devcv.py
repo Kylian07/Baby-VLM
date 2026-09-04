@@ -99,8 +99,15 @@ def find_tasks(root: str | Path) -> dict[str, list[TaskSource]]:
     def add(src: TaskSource) -> None:
         out.setdefault(src.canonical, []).append(src)
 
+    def _hidden(path: Path) -> bool:
+        """Skip hidden trees. The Hugging Face downloader leaves a .cache/
+        directory beside the data, and anything inside it is bookkeeping."""
+        return any(part.startswith(".") for part in path.relative_to(root).parts[:-1])
+
     # Layout A: <root>/[<split>/]<task>/data.json
     for path in sorted(root.rglob("data.json")):
+        if _hidden(path):
+            continue
         task = path.parent.name
         parent = path.parent.parent
         split = parent.name if parent.name in {"train", "val", "test"} else None
@@ -108,7 +115,7 @@ def find_tasks(root: str | Path) -> dict[str, list[TaskSource]]:
 
     # Layout B: <root>/<task>[_<split>].json  (the public Hugging Face release)
     for path in sorted(root.rglob("*.json")):
-        if path.name == "data.json" or path.parent.name == ".cache":
+        if path.name == "data.json" or _hidden(path) or path.name.startswith("."):
             continue
         stem = path.stem
         split = None

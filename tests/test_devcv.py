@@ -130,3 +130,24 @@ def test_missing_task_names_what_was_actually_found():
     with pytest.raises(FileNotFoundError) as e:
         load_task(FLAT, "no_such_task")
     assert "picture_vocabulary" in str(e.value)
+
+
+def test_hidden_trees_are_excluded_from_discovery(tmp_path):
+    """The Hugging Face downloader leaves a .cache/ tree beside the data.
+
+    Anything in it is bookkeeping and must never be mistaken for a task, or the
+    audit would report a task that does not exist.
+    """
+    import json as _json
+
+    from gavagai.data.devcv import find_tasks
+
+    (tmp_path / "images").mkdir()
+    (tmp_path / ".cache" / "huggingface" / "download").mkdir(parents=True)
+    (tmp_path / ".cache" / "huggingface" / "download" / "bogus_test.json").write_text("[]")
+    (tmp_path / "leftright_test.json").write_text(_json.dumps([{
+        "id": "x", "image": [], "conversations": [
+            {"from": "human", "value": "(A) (B)"}, {"from": "gpt", "value": "A"}]}]))
+
+    tasks = find_tasks(tmp_path)
+    assert set(tasks) == {"leftright"}, tasks
