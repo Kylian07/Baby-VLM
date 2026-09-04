@@ -121,7 +121,7 @@ def audit_task(entries) -> dict:
         if it.n_images == k + 1:
             try:
                 feats = [image_feature(p) for p in it.images]
-            except Exception as e:
+            except Exception:
                 missing = next((str(q) for q in it.images if not q.exists()), "?")
                 skipped[f"unresolved image: .../{Path(missing).name}"] += 1
                 continue
