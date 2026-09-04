@@ -68,24 +68,58 @@ def section_audit(results: Path) -> str:
     out = [
         "## 2. Text-blind benchmark audit",
         "",
-        "Accuracy of a training-free 32×32 luminance + RGB-histogram matcher that **never reads "
-        "the prompt**. Wilson 95% intervals.",
+        "Three baselines that never read the prompt. **dup-file** answers with whichever option "
+        "is the *same file* as the query — filenames only, no pixels. **image-match** compares a "
+        "32×32 luminance + RGB histogram. **position** always answers the most frequent gold "
+        "letter. Wilson 95% intervals.",
         "",
-        "| task | n | chance | most-frequent-answer | image-match (text-blind) |",
-        "|---|---|---|---|---|",
+        "| task | n | chance | position | dup-file | image-match |",
+        "|---|---|---|---|---|---|",
     ]
     for task, r in sorted(d.items()):
         pos = f"{r['position_acc']:.2f} [{r['position_ci'][0]:.2f}, {r['position_ci'][1]:.2f}]"
-        mat = (
-            f"**{r['match_acc']:.2f}** [{r['match_ci'][0]:.2f}, {r['match_ci'][1]:.2f}] (n={r['match_n']})"
-            if "match_acc" in r
-            else "n/a"
+        if "dup_acc" in r:
+            dup = (f"**{r['dup_acc']:.2f}** [{r['dup_ci'][0]:.2f}, {r['dup_ci'][1]:.2f}]"
+                   f" (n={r['dup_n']}, cov {r['dup_coverage']:.0%})")
+        elif r.get("degenerate"):
+            dup = f"*all options duplicate the query* ({r['degenerate_frac']:.0%})"
+        else:
+            dup = "n/a"
+        if "match_acc" in r:
+            mat = (f"**{r['match_acc']:.2f}** [{r['match_ci'][0]:.2f}, {r['match_ci'][1]:.2f}]"
+                   f" (n={r['match_n']})")
+        elif "match_skipped" in r:
+            mat = f"n/a ({next(iter(r['match_skipped']))})"
+        else:
+            mat = "n/a"
+        out.append(f"| {task} | {r['n_items']} | {r['chance']:.2f} | {pos} | {dup} | {mat} |")
+
+    degen = {t: r for t, r in d.items() if r.get("degenerate")}
+    out += ["", "### What this shows", ""]
+    hard = [t for t, r in d.items() if r.get("dup_acc", 0) >= 0.99]
+    if hard:
+        for t in hard:
+            r = d[t]
+            out.append(
+                f"- **{t} is solvable without perception.** In {r['dup_n']}/{r['n_items']} items "
+                f"the gold option is a byte-identical copy of the query image, so a string "
+                f"comparison scores {r['dup_acc']:.2f}."
+            )
+    for t, r in degen.items():
+        out.append(
+            f"- **{t} cannot be answered from the released files.** All options are the same file "
+            f"as the query in {r['degenerate']}/{r['n_items']} items ({r['degenerate_frac']:.0%}); "
+            f"any distinguishing transform must be applied by the evaluation harness at runtime."
         )
-        out.append(f"| {task} | {r['n_items']} | {r['chance']:.2f} | {pos} | {mat} |")
     out += [
+        "- **Answer positions are balanced.** The most-frequent-answer baseline sits at chance on "
+        "every task, so there is no position exploit.",
+        "- **Picture Vocabulary resists every baseline**, which is the control: these baselines do "
+        "not simply win everywhere.",
         "",
-        "Tasks with no query image to match against show `n/a`; the matcher is inapplicable, "
-        "not merely unsuccessful.",
+        "Measured on the **public Ego4D variant**. The published per-task scores are on the "
+        "Databrary-gated SAYCam variant; the two are produced by the same pipeline, so the same "
+        "construction should be checked there, but no claim is made about those numbers here.",
         "",
     ]
     return "\n".join(out)

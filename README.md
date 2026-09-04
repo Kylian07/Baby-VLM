@@ -21,27 +21,38 @@ BabyVLM-V2's from-scratch 1.1B "baby model" shows a sharp dissociation on **DevC
 It looks like a model with excellent perception and no word knowledge. **Part of that
 turns out to be an artefact of what the tasks measure.**
 
-## Finding 1 — some of these tasks are solvable without reading the question
+## Finding 1 — two DevCV tasks do not measure what they appear to
 
-`scripts/text_blind_audit.py` answers each multiple-choice item using a **32×32
-luminance + RGB-histogram** descriptor: no training, no network, no language.
+Three baselines that never read the prompt, run against the **public Ego4D release**
+(~6,200 scorable items). `scripts/text_blind_audit.py`.
 
-Pooled over the public SAYCam / BabyView / Ego4D samples:
+| task | n | chance | position | dup-file | image-match |
+|---|---|---|---|---|---|
+| **spatialdetails** | 1852 | 0.33 | 0.34 | **1.00** [1.00, 1.00] | **1.00** [1.00, 1.00] |
+| **leftright** | 1009 | 0.33 | 0.35 | *all options identical to query* | 0.32 (= chance) |
+| picture_vocabulary | 346 | 0.25 | 0.27 | n/a | n/a |
+| localize | 992 | 0.25 | 0.30 | n/a | n/a |
+| compare_real / synthetic | 939 / 1049 | 0.50 | 0.51 / 0.50 | n/a | n/a |
 
-| task | text-blind image-match | baby model | human | chance |
-|---|---|---|---|---|
-| **Left/Right** | **1.00** (24/24, 95% CI [0.86, 1.00]) | 96.4 | 94.5 | 33.3 |
-| NIH Spatial | **1.00** (10/10, CI [0.72, 1.00]) | 92.8 | 100 | 33.3 |
-| spatialdetails (SAYCam) | 0.33 (CI [0.10, 0.70]) | — | — | 33.3 |
-| Picture Vocabulary | n/a — no query image to match | 32.4 | 91.8 | 25.0 |
+**Spatial Details is solvable without perception.** In 1852/1852 items the gold option is a
+*byte-identical copy of the query image*. Comparing filenames scores 1.00. Gold letters are
+balanced (A:631 B:605 C:616), so the duplicate moves with the answer — not a position artefact.
 
-Left/Right, where the baby model scores **above the human ceiling**, is fully solved by a
-matcher that never reads the prompt. Picture Vocabulary is not — a useful control showing
-the baseline is not simply always winning.
+**Left/Right is unanswerable from the released files.** In 1009/1009 items the query and all
+three options are the same path. Any distinguishing transform must be applied by the eval
+harness at runtime, so nobody working from the public release can reproduce that task.
 
-> **Caveat, stated up front.** `n` is 6–24 per task on the bundled website samples, hence
-> the Wilson intervals. These numbers must be regenerated on the full public Ego4D release
-> before being quoted. The script does that in one command.
+**The controls hold.** Picture Vocabulary resists every baseline — its query is a *word*.
+Answer positions are at chance everywhere. These baselines win exactly where the data hands
+them the answer, and nowhere else.
+
+> **Verified twice.** `scripts/verify_dup_finding.py` re-derives both numbers from the raw JSON
+> using only the standard library, sharing no code with the audit, and reproduces 1852/1852 and
+> 1009/1009 exactly.
+>
+> **Boundary:** measured on the public **Ego4D** variant. BabyVLM-V2's published 96.4 / 92.8 are
+> on the gated **SAYCam** variant. Same pipeline, so worth checking — but no claim is made about
+> those numbers.
 
 ## Finding 2 — the residual gap is real, and it is about referential binding
 

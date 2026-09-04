@@ -55,22 +55,46 @@ def fig_text_blind(results: Path, out: Path) -> bool:
     if not src.exists():
         return False
     rows = json.loads(src.read_text())
-    tasks = [t for t, r in rows.items() if "match_acc" in r]
+    # Best text-blind baseline per task: dup-file where it applies, else image-match.
+    tasks, accs, los, his, kinds = [], [], [], [], []
+    for t, r in sorted(rows.items()):
+        if "dup_acc" in r:
+            acc, ci, kind = r["dup_acc"], r["dup_ci"], "duplicate file"
+        elif "match_acc" in r:
+            acc, ci, kind = r["match_acc"], r["match_ci"], "image match"
+        else:
+            continue
+        tasks.append(t)
+        accs.append(acc)
+        kinds.append(kind)
+        los.append(acc - ci[0])
+        his.append(ci[1] - acc)
     if not tasks:
         return False
-    fig, ax = plt.subplots(figsize=(7.5, 0.5 * len(tasks) + 2))
-    ys = range(len(tasks))
-    accs = [rows[t]["match_acc"] for t in tasks]
-    los = [rows[t]["match_acc"] - rows[t]["match_ci"][0] for t in tasks]
-    his = [rows[t]["match_ci"][1] - rows[t]["match_acc"] for t in tasks]
-    ax.barh(list(ys), accs, xerr=[los, his], capsize=4, color=PALETTE[1], height=0.55)
-    for y, t in zip(ys, tasks):
-        ax.plot([rows[t]["chance"]], [y], marker="|", ms=14, c="0.25")
-    ax.set_yticks(list(ys))
+
+    colors = [PALETTE[1] if k == "duplicate file" else PALETTE[0] for k in kinds]
+    fig, ax = plt.subplots(figsize=(8.6, 0.62 * len(tasks) + 2.4))
+    ys = list(range(len(tasks)))
+    ax.barh(ys, accs, xerr=[los, his], capsize=4, color=colors, height=0.55)
+    for y, t, a in zip(ys, tasks, accs):
+        ax.plot([rows[t]["chance"]], [y], marker="|", ms=15, c="0.2")
+        n = rows[t].get("dup_n") or rows[t].get("match_n")
+        ax.text(min(a + 0.03, 0.99), y, f"n={n}", va="center", fontsize=8, color="0.3")
+    for t, r in sorted(rows.items()):
+        if r.get("degenerate") and t in tasks:
+            ax.text(0.02, tasks.index(t), "all options identical to query -> no signal",
+                    va="center", fontsize=8, color="white", fontweight="bold")
+    ax.set_yticks(ys)
     ax.set_yticklabels(tasks)
-    ax.set_xlim(0, 1.02)
-    ax.set_xlabel("accuracy of a training-free matcher that never reads the prompt")
-    ax.set_title("Text-blind solvability of DevCV-Toolbox tasks", loc="left", fontweight="bold")
+    ax.set_xlim(0, 1.06)
+    ax.set_xlabel("accuracy of a baseline that never reads the prompt   "
+                  "(| marks chance)")
+    ax.set_title("DevCV-Toolbox: what can be answered without perception",
+                 loc="left", fontweight="bold")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color=PALETTE[1], label="duplicate-file baseline"),
+                       Patch(color=PALETTE[0], label="image-match baseline")],
+              fontsize=8, frameon=False, loc="lower right")
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     fig.savefig(out / "text_blind_audit.png", dpi=180)

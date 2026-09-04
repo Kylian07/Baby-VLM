@@ -36,24 +36,40 @@ This is not a failure of perception. The visual representation is evidently good
 
 ## 1.1 First: are these tasks measuring grounding?
 
-Before attributing a score to a model's competence, it is worth asking what a *trivial* system scores. `scripts/text_blind_audit.py` answers each multiple-choice item with a 32×32 luminance + RGB-histogram descriptor — no training, no network, and crucially **no access to the prompt**. For items shaped "here is X, which of (A)(B)(C) is the same X?", it simply returns the option most similar to the query image.
+Before attributing a score to a model's competence, it is worth asking what a *trivial* system scores. We ran three baselines that never read the prompt against the **public Ego4D release** of DevCV Toolbox (`wsashawn/devcv_toolbox_ego4d`, ~6,200 scorable items):
 
-Pooled over the public SAYCam / BabyView / Ego4D samples:
+* **dup-file** — answer with whichever option is the *same file* as the query image. Filenames only; no pixels.
+* **image-match** — a 32×32 luminance + RGB-histogram nearest neighbour. No training, no network.
+* **position** — always answer the most frequent gold letter.
 
-| task | text-blind image match | baby model | human | chance |
-|---|---|---|---|---|
-| **Left/Right** | **1.00** (24/24, 95% CI [0.86, 1.00]) | 96.4 | 94.5 | 33.3 |
-| NIH Spatial | **1.00** (10/10, CI [0.72, 1.00]) | 92.8 | 100 | 33.3 |
-| spatialdetails (SAYCam variant) | 0.33 (CI [0.10, 0.70]) | — | — | 33.3 |
-| Picture Vocabulary | n/a (no query image to match against) | 32.4 | 91.8 | 25.0 |
+| task | n | chance | position | dup-file | image-match |
+|---|---|---|---|---|---|
+| compare_real | 939 | 0.50 | 0.51 [0.48, 0.54] | n/a | n/a |
+| compare_synthetic | 1049 | 0.50 | 0.50 [0.47, 0.53] | n/a | n/a |
+| **spatialdetails** | 1852 | 0.33 | 0.34 [0.32, 0.36] | **1.00** [1.00, 1.00] | **1.00** [1.00, 1.00] |
+| **leftright** | 1009 | 0.33 | 0.35 [0.32, 0.38] | *all options identical to query* | 0.32 [0.29, 0.35] |
+| localize | 992 | 0.25 | 0.30 [0.27, 0.33] | n/a | n/a |
+| picture_vocabulary | 346 | 0.25 | 0.27 [0.23, 0.32] | n/a | n/a |
 
-Left/Right — where the baby model scores **above the human ceiling** — is solved outright by a matcher that never reads the question. Picture Vocabulary is not, which is the control that shows the baseline is not simply always winning.
+Three results, in decreasing order of how much they should worry the reader.
 
-Two consequences. First, a chunk of the apparent "excellent perception, no word knowledge" dissociation is a property of the tasks rather than of the model. Second, the *interesting* subset of DevCV Toolbox — the part that actually demands grounding — is smaller than it appears, and that subset is where the baby model sits near chance.
+**1. Spatial Details is solvable without perception.** In **1852 of 1852** items the gold option is a *byte-identical copy of the query image*, with two genuinely different distractors. A string comparison of filenames scores 1.00 with a zero-width interval. The gold letter is balanced across A/B/C (631/605/616), so the duplicate moves with the answer — this is not a position artefact. No pixels, no model, and no perception of any kind is required.
 
-**Caveat stated up front.** `n` is 6–24 per task on the bundled website samples, hence Wilson intervals throughout. These numbers must be regenerated on the full public Ego4D release before being quoted; the script does so in one command.
+**2. Left/Right cannot be answered from the released files at all.** In **1009 of 1009** items, the query and all three options are the *same path*. There is nothing in the released data that distinguishes the options, so any transform that makes the task well posed must be applied by the evaluation harness at runtime. The image-match baseline scores 0.32 against a 0.33 chance floor, which is the expected reading when there is no signal to find. A consequence worth stating plainly: **nobody working from the public release can reproduce or check this task.**
 
----
+**3. The controls hold, which is what makes 1 and 2 credible.** Picture Vocabulary (n=346) resists every baseline — its query is a *word*, so none of them apply. Answer positions are balanced everywhere: the most-frequent-answer baseline sits at chance on all six scorable tasks, so the benchmark has no position exploit. These baselines do not simply win everywhere; they win exactly where the data hands them the answer.
+
+### Verification
+
+A result of 1.00 with a zero-width interval is more often a fault in the measuring instrument than a property of the world, so both findings were re-derived by `scripts/verify_dup_finding.py`, which reads the released JSON using **only the standard library** and shares no loader, resolver or path-handling code with the audit. It reproduces 1852/1852 and 1009/1009 exactly.
+
+### The boundary of this claim
+
+This is measured on the **public Ego4D variant**. The per-task scores quoted from BabyVLM-V2 (96.4 Left/Right, 92.8 Spatial Details) are on the **Databrary-gated SAYCam variant**, which we cannot access. The two variants are produced by the same pipeline, which makes the same construction worth checking — but **we make no claim about the published numbers**, and the paper must not either. What we claim is narrower and fully supported: *the public release that the community will actually use contains one task solvable without perception and one that is unanswerable as distributed.*
+
+### What this does to the rest of the argument
+
+The apparent "excellent perception, no word knowledge" dissociation is partly a property of the tasks. Of the two tasks the baby model scores near ceiling on, one hands out its answer and the other has no answer in the data. Meanwhile the tasks where it sits near chance — Picture Vocabulary and Localization — are exactly the ones no text-blind baseline can touch. That does not weaken the motivation for §2 onward; it sharpens it, by identifying which part of the benchmark is actually measuring grounding.
 
 ## 2. Why the standard objective fails here
 
