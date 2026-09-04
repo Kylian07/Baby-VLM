@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # "Touch the image of 'comb'" / 'Which is a stroller?' / "Point at the stone."
@@ -144,12 +144,53 @@ def _image_roots(json_path: Path, root: Path) -> list[Path]:
     return out
 
 
+_INDEX_CACHE: dict[Path, dict[str, list[Path]]] = {}
+_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+
+
+def _basename_index(root: Path) -> dict[str, list[Path]]:
+    """Map every image basename under ``root`` to the paths carrying it.
+
+    Built once per root and cached.  Used only as a fallback, and only when the
+    basename is unambiguous -- see :func:`_resolve`.
+    """
+    if root not in _INDEX_CACHE:
+        idx: dict[str, list[Path]] = {}
+        for p in root.rglob("*"):
+            if p.suffix.lower() in _IMAGE_SUFFIXES and p.is_file():
+                idx.setdefault(p.name, []).append(p)
+        _INDEX_CACHE[root] = idx
+    return _INDEX_CACHE[root]
+
+
 def _resolve(rel: str, roots: list[Path]) -> Path:
+    """Locate a record's image.
+
+    Tries the relative path against each candidate root, then falls back to
+    matching on basename alone.  The fallback deliberately refuses to resolve an
+    **ambiguous** basename: silently picking one of several same-named files
+    could make a matching task look solvable when it is not, which would
+    fabricate a result rather than merely miss one.
+    """
     for r in roots:
         p = r / rel
         if p.exists():
             return p
-    return roots[0] / rel  # keep a path for the error message
+
+    name = Path(rel).name
+    for r in roots:
+        hits = _basename_index(r).get(name, [])
+        if len(hits) == 1:
+            return hits[0]
+        if len(hits) > 1:
+            # Ambiguous: prefer a hit whose tail matches more of the given path.
+            parts = tuple(Path(rel).parts)
+            exact = [h for h in hits if tuple(h.parts[-len(parts):]) == parts]
+            if len(exact) == 1:
+                return exact[0]
+            break  # genuinely ambiguous -- do not guess
+
+    return roots[0] / rel  # non-existent; caller reports it as unresolved
 
 
 @dataclass
@@ -158,6 +199,8 @@ class DevCVItem:
     prompt: str
     answer: str
     images: list[Path]
+    raw_images: list[str] = field(default_factory=list)
+    """The image strings exactly as they appear in the JSON, before resolution."""
 
     @property
     def n_images(self) -> int:
@@ -189,6 +232,7 @@ def load_source(src: TaskSource) -> list[DevCVItem]:
                 prompt=human,
                 answer=str(gpt),
                 images=[_resolve(p, src.image_roots) for p in imgs],
+                raw_images=list(imgs),
             )
         )
     return items

@@ -151,3 +151,59 @@ def test_hidden_trees_are_excluded_from_discovery(tmp_path):
 
     tasks = find_tasks(tmp_path)
     assert set(tasks) == {"leftright"}, tasks
+
+
+def test_basename_fallback_resolves_unique_files(tmp_path):
+    """Records sometimes store a bare filename while images sit in subdirs."""
+    import json as _json
+
+    from gavagai.data.devcv import load_task
+
+    (tmp_path / "images" / "leftright").mkdir(parents=True)
+    for n in ("q.jpg", "a.jpg"):
+        (tmp_path / "images" / "leftright" / n).write_bytes(b"x")
+    (tmp_path / "t_test.json").write_text(_json.dumps([{
+        "id": "0", "image": ["q.jpg", "a.jpg"],          # bare names, no directory
+        "conversations": [{"from": "human", "value": "(A) (B)"},
+                          {"from": "gpt", "value": "A"}]}]))
+    items = load_task(tmp_path, "t")
+    assert all(p.exists() for p in items[0].images), items[0].images
+
+
+def test_ambiguous_basenames_are_refused_not_guessed(tmp_path):
+    """Two files with the same name in different directories must NOT resolve.
+
+    Guessing one would let a matching task appear solvable when it is not --
+    a fabricated result, which is worse than a missing one.
+    """
+    import json as _json
+
+    from gavagai.data.devcv import load_task
+
+    for sub in ("optA", "optB"):
+        (tmp_path / "images" / sub).mkdir(parents=True)
+        (tmp_path / "images" / sub / "same.jpg").write_bytes(b"x")
+    (tmp_path / "t_test.json").write_text(_json.dumps([{
+        "id": "0", "image": ["same.jpg"],
+        "conversations": [{"from": "human", "value": "(A) (B)"},
+                          {"from": "gpt", "value": "A"}]}]))
+    items = load_task(tmp_path, "t")
+    assert not items[0].images[0].exists(), "ambiguous basename must not resolve"
+
+
+def test_ambiguity_broken_by_a_matching_path_tail(tmp_path):
+    """'optA/same.jpg' is unambiguous even though 'same.jpg' alone is not."""
+    import json as _json
+
+    from gavagai.data.devcv import load_task
+
+    for sub in ("optA", "optB"):
+        (tmp_path / "images" / sub).mkdir(parents=True)
+        (tmp_path / "images" / sub / "same.jpg").write_bytes(b"x")
+    (tmp_path / "t_test.json").write_text(_json.dumps([{
+        "id": "0", "image": ["optA/same.jpg"],
+        "conversations": [{"from": "human", "value": "(A) (B)"},
+                          {"from": "gpt", "value": "A"}]}]))
+    items = load_task(tmp_path, "t")
+    assert items[0].images[0].exists()
+    assert items[0].images[0].parent.name == "optA"

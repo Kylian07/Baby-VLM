@@ -33,6 +33,21 @@ def main():
     ap.add_argument("--examples", type=int, default=1, help="prompts to print per task")
     args = ap.parse_args()
 
+    # Survey the images/ tree first -- resolution depends on its shape.
+    img_root = args.root / "images"
+    if img_root.is_dir():
+        subs = sorted(d for d in img_root.iterdir() if d.is_dir())
+        print(f"images/ contains {len(subs)} subdirectories: {[d.name for d in subs][:12]}")
+        for d in subs[:4]:
+            files = list(d.rglob("*"))
+            sample = next((f for f in files if f.is_file()), None)
+            print(f"  images/{d.name}: {sum(1 for f in files if f.is_file())} files"
+                  + (f", e.g. {sample.relative_to(img_root)}" if sample else ""))
+    else:
+        top = sorted(p.name for p in args.root.iterdir())[:15]
+        print(f"no images/ directory; root contains: {top}")
+    print()
+
     for task, sources in sorted(find_tasks(args.root).items()):
         items = []
         for s in sources:
@@ -56,9 +71,19 @@ def main():
         print(f"  image paths exist : {exists}/{total_paths} (first 50 items)")
         for it in items[: args.examples]:
             print(f"  --- example id={it.item_id} gold={it.answer!r} ---")
-            print(f"      prompt: {it.prompt[:300]}")
-            for p in it.images[:6]:
-                print(f"      image : {p.name}  exists={p.exists()}")
+            print(f"      prompt: {it.prompt[:220]}")
+            for raw, resolved in list(zip(it.raw_images, it.images))[:4]:
+                print(f"      raw      : {raw}")
+                print(f"      resolved : {resolved}  exists={resolved.exists()}")
+            # If it did not resolve, find where the file actually lives.
+            if it.images and not it.images[0].exists():
+                name = Path(it.raw_images[0]).name
+                hits = list(args.root.rglob(name))[:3]
+                if hits:
+                    for h in hits:
+                        print(f"      FOUND AT : {h.relative_to(args.root)}")
+                else:
+                    print(f"      NOT FOUND anywhere under {args.root}: {name}")
 
 
 if __name__ == "__main__":
