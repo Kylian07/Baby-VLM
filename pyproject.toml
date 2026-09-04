@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "babygot"
+version = "0.1.0"
+description = "BabyGOT — Grounded Optimal-Transport Pretraining for sample-efficient VLMs (BabyVLM Workshop, NeurIPS 2026)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "BabyGOT" }]
+dependencies = [
+    "torch>=2.1",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -44,18 +44,24 @@ relate to the recommended reading:
 # deps: torch + numpy only
 pip install -r requirements.txt
 
+# (recommended) install the package so `python -m babygot.run` works from anywhere
+pip install -e .
+
 # 30-second smoke test (CPU, tiny model)
-PYTHONPATH=src python -m babygot.run --method babygot --tiny
+python -m babygot.run --method babygot --tiny
 
 # fast but meaningful run (~1.9M params)
-PYTHONPATH=src python -m babygot.run --method babygot --small
+python -m babygot.run --method babygot --small
 
 # full run on a Kaggle T4 GPU
-PYTHONPATH=src python -m babygot.run --method babygot --steps 4000 --n-train 4000 --n-eval 200
+python -m babygot.run --method babygot --steps 4000 --n-train 4000 --n-eval 200
 
 # the paper's ablation table (all 5 methods, same budget & seed)
-PYTHONPATH=src python -m babygot.run --all --small
+python -m babygot.run --all --small
 ```
+
+> If you prefer not to install, run from the repo root with the package on the
+> path: `PYTHONPATH=src python -m babygot.run ...`
 
 Methods: `babygot` (ours), `global_clip` (CLIP/CVCL-style), `babyllava`
 (BabyVLM-style global token + AR), `no_gate`, `no_ot` (FILIP-style surrogate).

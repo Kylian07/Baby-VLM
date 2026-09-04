@@ -459,12 +459,13 @@ two-word stage and the noun bias.
 
 ```bash
 pip install -r requirements.txt            # torch + numpy only
+pip install -e .                           # makes `babygot` importable (or set PYTHONPATH=src)
 # full run on a Kaggle T4 (GPU)
-PYTHONPATH=src python -m babygot.run --method babygot --steps 4000 --n-train 4000 --n-eval 200
+python -m babygot.run --method babygot --steps 4000 --n-train 4000 --n-eval 200
 # the paper's ablation table
-PYTHONPATH=src python -m babygot.run --all --small
+python -m babygot.run --all --small
 # 30-second smoke test on CPU
-PYTHONPATH=src python -m babygot.run --method babygot --tiny
+python -m babygot.run --method babygot --tiny
 ```
 
 Code (models, objectives, benchmarks, training) is in `src/babygot/`; all
