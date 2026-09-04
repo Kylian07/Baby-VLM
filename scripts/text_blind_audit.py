@@ -41,6 +41,14 @@ from pathlib import Path
 
 import numpy as np
 
+# Running this as `python scripts/foo.py` puts scripts/ on sys.path, not the
+# repo root, so `import gavagai` would fail. Make the script work regardless of
+# how it is invoked or what the working directory is.
+import sys
+from pathlib import Path as _Path
+
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
 from gavagai.data.devcv import find_tasks, load_source
 
 _OPTION = re.compile(r"\(([A-F])\)")
