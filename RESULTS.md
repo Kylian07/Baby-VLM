@@ -22,24 +22,25 @@ The regimes vary how much of the speech is non-referential, how often a word is 
 
 ## 2. Text-blind benchmark audit
 
-Accuracy of a training-free 32×32 luminance + RGB-histogram matcher that **never reads the prompt**. Wilson 95% intervals.
+Three baselines that never read the prompt. **dup-file** answers with whichever option is the *same file* as the query — filenames only, no pixels. **image-match** compares a 32×32 luminance + RGB histogram. **position** always answers the most frequent gold letter. Wilson 95% intervals.
 
-| task | n | chance | most-frequent-answer | image-match (text-blind) |
-|---|---|---|---|---|
-| compare_real | 6 | 0.50 | 0.67 [0.30, 0.90] | n/a |
-| compare_synthetic | 6 | 0.50 | 0.67 [0.30, 0.90] | n/a |
-| leftright | 24 | 0.33 | 0.42 [0.24, 0.61] | **1.00** [0.86, 1.00] (n=24) |
-| localize | 24 | 0.25 | 0.42 [0.24, 0.61] | n/a |
-| picture_vocab | 10 | 0.25 | 0.60 [0.31, 0.83] | n/a |
-| picture_vocab_selected | 10 | 0.25 | 0.60 [0.31, 0.83] | n/a |
-| picture_vocabulary | 6 | 0.25 | 0.33 [0.10, 0.70] | n/a |
-| spatial | 10 | 0.27 | 0.40 [0.17, 0.69] | **1.00** [0.72, 1.00] (n=10) |
-| spatialdetails | 6 | 0.33 | 0.33 [0.10, 0.70] | **0.33** [0.10, 0.70] (n=6) |
-| vdr | 10 | 0.50 | 0.60 [0.31, 0.83] | n/a |
-| who_has_more | 10 | 0.50 | 0.80 [0.49, 0.94] | n/a |
-| whohasmore_synthetic | 18 | 0.50 | 0.56 [0.34, 0.75] | n/a |
+| task | n | chance | position | dup-file | image-match |
+|---|---|---|---|---|---|
+| compare_real | 939 | 0.50 | 0.51 [0.48, 0.54] | n/a | n/a (n_images=2 != n_options+1=3) |
+| compare_synthetic | 1049 | 0.50 | 0.50 [0.47, 0.53] | n/a | n/a (n_images=2 != n_options+1=3) |
+| leftright | 1009 | 0.33 | 0.35 [0.32, 0.38] | *all options duplicate the query* (100%) | **0.32** [0.29, 0.35] (n=1009) |
+| localize | 992 | 0.25 | 0.30 [0.27, 0.33] | n/a | n/a (n_images=1 != n_options+1=5) |
+| picture_vocabulary | 346 | 0.25 | 0.27 [0.23, 0.32] | n/a | n/a (n_images=4 != n_options+1=5) |
+| spatialdetails | 1852 | 0.33 | 0.34 [0.32, 0.36] | **1.00** [1.00, 1.00] (n=1852, cov 100%) | **1.00** [1.00, 1.00] (n=1852) |
 
-Tasks with no query image to match against show `n/a`; the matcher is inapplicable, not merely unsuccessful.
+### What this shows
+
+- **spatialdetails is solvable without perception.** In 1852/1852 items the gold option is a byte-identical copy of the query image, so a string comparison scores 1.00.
+- **leftright cannot be answered from the released files.** All options are the same file as the query in 1009/1009 items (100%); any distinguishing transform must be applied by the evaluation harness at runtime.
+- **Answer positions are balanced.** The most-frequent-answer baseline sits at chance on every task, so there is no position exploit.
+- **Picture Vocabulary resists every baseline**, which is the control: these baselines do not simply win everywhere.
+
+Measured on the **public Ego4D variant**. The published per-task scores are on the Databrary-gated SAYCam variant; the two are produced by the same pipeline, so the same construction should be checked there, but no claim is made about those numbers here.
 
 ## 3. Sample efficiency — the contrastive setting
 

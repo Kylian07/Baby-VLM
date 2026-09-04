@@ -266,34 +266,55 @@ def story(F: Path):
 
     # ---------------- 3 gaps ----------------
     a(P("3.  Two gaps", "h1"))
-    a(P("3.1  The benchmark may not measure what it appears to", "h2"))
-    a(P("BabyVLM-V2’s published per-task scores look like a model with excellent perception and no "
-        "vocabulary: <b>96.4</b> on Left/Right (humans score 94.5 — it beats people) but <b>32.4</b> on "
-        "Picture Vocabulary, where pure guessing scores 25.0 and humans score 91.8.", "body"))
-    a(P("But Left/Right asks: <i>“here is a cat — which of these three is exactly this cat?”</i> "
-        "That is a spot-the-matching-photograph puzzle. It may not require understanding the question at all. "
-        "So we tested it with a deliberately weak baseline: shrink every image to 32×32, take its "
-        "brightness pattern and colour histogram, and return whichever option is most similar to the query. "
-        "<b>No training, no neural network, and no access to the prompt.</b>", "body"))
+    a(P("3.1  Two tasks do not measure what they appear to", "h2"))
+    a(P("Before attributing a score to a model’s competence, it is worth asking what a "
+        "<b>trivial</b> system scores. Three baselines that never read the prompt were run against "
+        "the <b>public Ego4D release</b> of DevCV Toolbox — about 6,200 scorable items. "
+        "<b>dup-file</b> answers with whichever option is the <i>same file</i> as the query: "
+        "filenames only, no pixels. <b>image-match</b> compares a 32×32 luminance and colour "
+        "histogram. <b>position</b> always answers the most frequent gold letter.", "body"))
     a(table(
-        ["Task", "Text-blind matcher", "Baby model", "Human", "Chance"],
-        [["Left/Right", "<b>1.00</b> &nbsp;(24/24, CI 0.86–1.00)", "96.4", "94.5", "33.3"],
-         ["NIH Spatial", "<b>1.00</b> &nbsp;(10/10, CI 0.72–1.00)", "92.8", "100", "33.3"],
-         ["spatialdetails (SAYCam)", "0.33 &nbsp;(CI 0.10–0.70)", "—", "—", "33.3"],
-         ["Picture Vocabulary", "n/a — nothing to match against", "32.4", "91.8", "25.0"]],
-        widths=[42 * mm, 58 * mm, 22 * mm, 20 * mm, 21 * mm], highlight=[1, 2]))
+        ["Task", "n", "chance", "position", "dup-file", "image-match"],
+        [["<b>spatialdetails</b>", "1852", "0.33", "0.34", "<b>1.00</b> [0.998, 1.000]", "<b>1.00</b> [0.998, 1.000]"],
+         ["<b>leftright</b>", "1009", "0.33", "0.35", "<i>all options = query</i>", "0.32 (= chance)"],
+         ["compare_real", "939", "0.50", "0.51", "n/a", "n/a"],
+         ["compare_synthetic", "1049", "0.50", "0.50", "n/a", "n/a"],
+         ["localize", "992", "0.25", "0.30", "n/a", "n/a"],
+         ["picture_vocabulary", "346", "0.25", "0.27", "n/a", "n/a"]],
+        widths=[36 * mm, 13 * mm, 16 * mm, 21 * mm, 40 * mm, 39 * mm], highlight=[1, 2]))
     a(callout(
-        "Finding 1",
-        "Left/Right — where the published model scores <b>above the human ceiling</b> — is solved "
-        "outright by a matcher that never reads the question. Picture Vocabulary is <b>not</b>, which is the "
-        "control showing the baseline is not simply winning everywhere. Part of the dramatic "
-        "“perception yes, words no” split is therefore a property of the <b>tasks</b>, not of the "
-        "model. <font color=\"%s\"><b>Caveat:</b></font> n is 6–24 per task on the public samples, "
-        "hence the Wilson intervals; these must be regenerated on the full public Ego4D release before "
-        "being quoted." % WARN.hexval()))
+        "Finding 1 — Spatial Details is solvable without perception",
+        "In <b>1852 of 1852</b> items the gold option is a <b>byte-identical copy of the query "
+        "image</b>, with two genuinely different distractors. Comparing filenames scores 1.00. "
+        "The gold letter is balanced across A/B/C (631/605/616), so the duplicate <b>moves with "
+        "the answer</b> — this is not a position artefact. No pixels, no model, and no perception "
+        "of any kind is required."))
+    a(callout(
+        "Finding 2 — Left/Right cannot be answered from the released files",
+        "In <b>1009 of 1009</b> items the query and all three options are the <b>same path</b>. "
+        "Nothing in the released data distinguishes the options, so any transform that makes the "
+        "task well posed must be applied by the evaluation harness at runtime. The image-match "
+        "baseline reads 0.32 against a 0.33 chance floor, which is what no signal looks like. "
+        "A consequence worth stating plainly: <b>nobody working from the public release can "
+        "reproduce or check this task.</b>", tone="warn"))
+    a(P("The controls hold, which is what makes those two credible. Picture Vocabulary (n=346) "
+        "resists every baseline — its query is a <b>word</b>, so none of them apply — and it is "
+        "exactly where the baby model sits at chance. Answer positions are balanced on all six "
+        "scorable tasks, so there is no position exploit. These baselines win where the data hands "
+        "them the answer, and nowhere else.", "body"))
     a(figure(F / "text_blind_audit.png",
-             "Figure 1. Accuracy of a training-free matcher that never reads the prompt. "
-             "Vertical ticks mark the chance floor for each task."))
+             "Figure 1. Every scorable task, including those no baseline can touch — dropping "
+             "those would make the baselines look like they win everywhere."))
+    a(callout(
+        "Verification, and the boundary of the claim",
+        "A result of 1.00 is more often a fault in the measuring instrument than a property of the "
+        "world, so both findings were re-derived by a second script that reads the released JSON "
+        "using <b>only the standard library</b>, sharing no loader, resolver or path-handling code "
+        "with the audit. It reproduces 1852/1852 and 1009/1009 exactly.<br/><br/>"
+        "This is measured on the <b>public Ego4D variant</b>. The published 96.4 and 92.8 are on "
+        "the Databrary-gated <b>SAYCam variant</b>, which we cannot access. Same generation "
+        "pipeline, so the same construction is worth checking there — but <b>no claim is made "
+        "about the published numbers</b>."))
 
     a(P("3.2  The training objective has nowhere to put a word’s meaning", "h2"))
     a(P("This is the deeper gap. In LLaVA-style training the model’s only job is: given the picture, "

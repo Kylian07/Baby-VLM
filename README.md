@@ -28,7 +28,7 @@ Three baselines that never read the prompt, run against the **public Ego4D relea
 
 | task | n | chance | position | dup-file | image-match |
 |---|---|---|---|---|---|
-| **spatialdetails** | 1852 | 0.33 | 0.34 | **1.00** [1.00, 1.00] | **1.00** [1.00, 1.00] |
+| **spatialdetails** | 1852 | 0.33 | 0.34 | **1.00** [0.998, 1.000] | **1.00** [0.998, 1.000] |
 | **leftright** | 1009 | 0.33 | 0.35 | *all options identical to query* | 0.32 (= chance) |
 | picture_vocabulary | 346 | 0.25 | 0.27 | n/a | n/a |
 | localize | 992 | 0.25 | 0.30 | n/a | n/a |

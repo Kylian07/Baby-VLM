@@ -46,14 +46,14 @@ Before attributing a score to a model's competence, it is worth asking what a *t
 |---|---|---|---|---|---|
 | compare_real | 939 | 0.50 | 0.51 [0.48, 0.54] | n/a | n/a |
 | compare_synthetic | 1049 | 0.50 | 0.50 [0.47, 0.53] | n/a | n/a |
-| **spatialdetails** | 1852 | 0.33 | 0.34 [0.32, 0.36] | **1.00** [1.00, 1.00] | **1.00** [1.00, 1.00] |
+| **spatialdetails** | 1852 | 0.33 | 0.34 [0.32, 0.36] | **1.00** [0.998, 1.000] | **1.00** [0.998, 1.000] |
 | **leftright** | 1009 | 0.33 | 0.35 [0.32, 0.38] | *all options identical to query* | 0.32 [0.29, 0.35] |
 | localize | 992 | 0.25 | 0.30 [0.27, 0.33] | n/a | n/a |
 | picture_vocabulary | 346 | 0.25 | 0.27 [0.23, 0.32] | n/a | n/a |
 
 Three results, in decreasing order of how much they should worry the reader.
 
-**1. Spatial Details is solvable without perception.** In **1852 of 1852** items the gold option is a *byte-identical copy of the query image*, with two genuinely different distractors. A string comparison of filenames scores 1.00 with a zero-width interval. The gold letter is balanced across A/B/C (631/605/616), so the duplicate moves with the answer — this is not a position artefact. No pixels, no model, and no perception of any kind is required.
+**1. Spatial Details is solvable without perception.** In **1852 of 1852** items the gold option is a *byte-identical copy of the query image*, with two genuinely different distractors. A string comparison of filenames scores 1.00 (Wilson 95% CI [0.998, 1.000]). The gold letter is balanced across A/B/C (631/605/616), so the duplicate moves with the answer — this is not a position artefact. No pixels, no model, and no perception of any kind is required.
 
 **2. Left/Right cannot be answered from the released files at all.** In **1009 of 1009** items, the query and all three options are the *same path*. There is nothing in the released data that distinguishes the options, so any transform that makes the task well posed must be applied by the evaluation harness at runtime. The image-match baseline scores 0.32 against a 0.33 chance floor, which is the expected reading when there is no signal to find. A consequence worth stating plainly: **nobody working from the public release can reproduce or check this task.**
 
@@ -61,7 +61,7 @@ Three results, in decreasing order of how much they should worry the reader.
 
 ### Verification
 
-A result of 1.00 with a zero-width interval is more often a fault in the measuring instrument than a property of the world, so both findings were re-derived by `scripts/verify_dup_finding.py`, which reads the released JSON using **only the standard library** and shares no loader, resolver or path-handling code with the audit. It reproduces 1852/1852 and 1009/1009 exactly.
+A result of 1.00 with a lower confidence bound of 0.998 is more often a fault in the measuring instrument than a property of the world, so both findings were re-derived by `scripts/verify_dup_finding.py`, which reads the released JSON using **only the standard library** and shares no loader, resolver or path-handling code with the audit. It reproduces 1852/1852 and 1009/1009 exactly.
 
 ### The boundary of this claim
 

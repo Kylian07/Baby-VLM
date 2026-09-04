@@ -51,53 +51,91 @@ def fig_ar_ablation(results: Path, out: Path) -> bool:
 
 
 def fig_text_blind(results: Path, out: Path) -> bool:
+    """What each DevCV task can be answered by, without reading the prompt.
+
+    Every task appears, including those no baseline can touch: those are the
+    controls, and dropping them would make the baselines look like they win
+    everywhere. Palette is categorical slots 1-2 of the reference palette
+    (validated: adjacent CVD dE 24.7, normal-vision 33.6, contrast >= 3:1).
+    """
     src = results / "text_blind_audit.json"
     if not src.exists():
         return False
     rows = json.loads(src.read_text())
-    # Best text-blind baseline per task: dup-file where it applies, else image-match.
-    tasks, accs, los, his, kinds = [], [], [], [], []
-    for t, r in sorted(rows.items()):
-        if "dup_acc" in r:
-            acc, ci, kind = r["dup_acc"], r["dup_ci"], "duplicate file"
-        elif "match_acc" in r:
-            acc, ci, kind = r["match_acc"], r["match_ci"], "image match"
-        else:
-            continue
-        tasks.append(t)
-        accs.append(acc)
-        kinds.append(kind)
-        los.append(acc - ci[0])
-        his.append(ci[1] - acc)
-    if not tasks:
-        return False
 
-    colors = [PALETTE[1] if k == "duplicate file" else PALETTE[0] for k in kinds]
-    fig, ax = plt.subplots(figsize=(8.6, 0.62 * len(tasks) + 2.4))
-    ys = list(range(len(tasks)))
-    ax.barh(ys, accs, xerr=[los, his], capsize=4, color=colors, height=0.55)
-    for y, t, a in zip(ys, tasks, accs):
-        ax.plot([rows[t]["chance"]], [y], marker="|", ms=15, c="0.2")
-        n = rows[t].get("dup_n") or rows[t].get("match_n")
-        ax.text(min(a + 0.03, 0.99), y, f"n={n}", va="center", fontsize=8, color="0.3")
-    for t, r in sorted(rows.items()):
-        if r.get("degenerate") and t in tasks:
-            ax.text(0.02, tasks.index(t), "all options identical to query -> no signal",
-                    va="center", fontsize=8, color="white", fontweight="bold")
-    ax.set_yticks(ys)
-    ax.set_yticklabels(tasks)
-    ax.set_xlim(0, 1.06)
-    ax.set_xlabel("accuracy of a baseline that never reads the prompt   "
-                  "(| marks chance)")
+    BLUE, ORANGE = "#2a78d6", "#eb6834"
+    MUTED, INK = "#8a8880", "#0b0b0b"
+
+    recs = []
+    for t, r in rows.items():
+        if "dup_acc" in r:
+            recs.append((t, r["dup_acc"], r["dup_ci"], r["dup_n"], ORANGE,
+                         "duplicate file", r.get("degenerate")))
+        elif "match_acc" in r:
+            recs.append((t, r["match_acc"], r["match_ci"], r["match_n"], BLUE,
+                         "image match", r.get("degenerate")))
+        else:
+            recs.append((t, None, None, r["n_items"], None, None, None))
+    # Solvable first (the finding), controls last.
+    recs.sort(key=lambda x: (0 if x[1] is not None else 1, -(x[1] or 0)))
+
+    fig, ax = plt.subplots(figsize=(9.0, 0.5 * len(recs) + 2.0))
+    labels = []
+    for i, (task, acc, ci, n, color, kind, degen) in enumerate(recs):
+        y = len(recs) - 1 - i
+        chance = rows[task]["chance"]
+        if acc is None:
+            labels.append(f"{task}\n(n={n})")
+            ax.text(0.012, y, "no text-blind baseline applies",
+                    va="center", fontsize=8.5, color=MUTED, style="italic")
+            continue
+
+        hatch = "///" if degen else None
+        ax.barh(y, acc, height=0.52, color=color, zorder=2,
+                hatch=hatch, edgecolor="white" if degen else "none", linewidth=0)
+        ax.errorbar(acc, y, xerr=[[acc - ci[0]], [ci[1] - acc]], fmt="none",
+                    ecolor=INK, elinewidth=1.1, capsize=3, zorder=3)
+        # Long bars label inside so nothing is clipped at the axis edge.
+        if acc > 0.85:
+            ax.text(acc - 0.015, y, f"{acc:.2f}", va="center", ha="right",
+                    fontsize=9.5, color="white", fontweight="bold", zorder=4)
+        else:
+            ax.text(acc + 0.03, y, f"{acc:.2f}", va="center", ha="left",
+                    fontsize=9.5, color=INK, fontweight="bold", zorder=4)
+        if degen:
+            # Kept off the y-axis label, which would widen the left margin and
+            # squeeze the plot.
+            ax.text(acc + 0.10, y, "all options identical to the query - no signal",
+                    va="center", ha="left", fontsize=8.5, color=MUTED, style="italic")
+        labels.append(f"{task}\n(n={n})")
+
+    for i, (task, *_rest) in enumerate(recs):
+        y = len(recs) - 1 - i
+        c = rows[task]["chance"]
+        ax.plot([c, c], [y - 0.3, y + 0.3], color=INK, lw=1.6, zorder=5)
+
+    ax.set_yticks(list(range(len(recs))))
+    ax.set_yticklabels(list(reversed(labels)), fontsize=9)
+    ax.set_xlim(0, 1.09)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_xlabel("accuracy of a baseline that never reads the prompt\n"
+                  "vertical rule = chance", fontsize=9)
     ax.set_title("DevCV-Toolbox: what can be answered without perception",
-                 loc="left", fontweight="bold")
+                 loc="left", fontweight="bold", fontsize=12, pad=12)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.grid(axis="x", color="0.9", lw=0.8, zorder=0)
+    ax.set_axisbelow(True)
+
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color=PALETTE[1], label="duplicate-file baseline"),
-                       Patch(color=PALETTE[0], label="image-match baseline")],
-              fontsize=8, frameon=False, loc="lower right")
-    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(handles=[
+        Patch(facecolor=ORANGE, label="duplicate-file baseline (filenames only)"),
+        Patch(facecolor=BLUE, label="image-match baseline (32x32 histogram)"),
+        Patch(facecolor=BLUE, hatch="///", edgecolor="white",
+              label="no signal in the released data"),
+    ], fontsize=8, frameon=False, loc="lower right", bbox_to_anchor=(1.0, -0.02))
     fig.tight_layout()
-    fig.savefig(out / "text_blind_audit.png", dpi=180)
+    fig.savefig(out / "text_blind_audit.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
     return True
 
