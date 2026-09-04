@@ -122,7 +122,8 @@ def audit_task(entries) -> dict:
             try:
                 feats = [image_feature(p) for p in it.images]
             except Exception as e:
-                skipped[f"image load failed: {type(e).__name__}"] += 1
+                missing = next((str(q) for q in it.images if not q.exists()), "?")
+                skipped[f"unresolved image: .../{Path(missing).name}"] += 1
                 continue
             q = feats[0]
             sims = [float(q @ f) for f in feats[1:]]

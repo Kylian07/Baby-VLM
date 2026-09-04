@@ -31,6 +31,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", type=Path, required=True)
     ap.add_argument("--examples", type=int, default=1, help="prompts to print per task")
+    ap.add_argument("--task", nargs="+", default=None, help="only inspect these tasks")
     args = ap.parse_args()
 
     # Survey the images/ tree first -- resolution depends on its shape.
@@ -49,6 +50,8 @@ def main():
     print()
 
     for task, sources in sorted(find_tasks(args.root).items()):
+        if args.task and task not in args.task:
+            continue
         items = []
         for s in sources:
             items.extend(load_source(s))
@@ -61,6 +64,9 @@ def main():
         parsed_word = sum(target_word(it.prompt) is not None for it in items)
         exists = sum(1 for it in items[:50] for p in it.images if p.exists())
         total_paths = sum(len(it.images) for it in items[:50])
+        # Distinct basenames per item: 1 means every option points at the same
+        # filename, which is what makes resolution ambiguous.
+        distinct = Counter(len({Path(r).name for r in it.raw_images}) for it in items)
 
         print("=" * 74)
         print(f"{task}   ({len(items)} items)")
@@ -69,6 +75,7 @@ def main():
         print(f"  answers (top6): {dict(answers.most_common(6))}")
         print(f"  target_word parsed: {parsed_word}/{len(items)}")
         print(f"  image paths exist : {exists}/{total_paths} (first 50 items)")
+        print(f"  distinct basenames per item: {dict(sorted(distinct.items()))}")
         for it in items[: args.examples]:
             print(f"  --- example id={it.item_id} gold={it.answer!r} ---")
             print(f"      prompt: {it.prompt[:220]}")
