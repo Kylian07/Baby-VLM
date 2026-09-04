@@ -1,0 +1,11 @@
+# BabyGOT — Grounded Optimal-Transport Pretraining for sample-efficient VLMs.
+# The implementation is deliberately dependency-light: PyTorch + NumPy only.
+# (The entire model, tokenizer, data generator and benchmarks are written from
+#  scratch so the maths is auditable and the code runs anywhere, incl. Kaggle T4.)
+
+# PyTorch (install the CUDA build on Kaggle T4; CPU build works for smoke tests)
+torch>=2.1
+numpy>=1.24
+
+# Optional, for nicer experiment tracking (not required to run)
+# wandb

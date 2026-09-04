@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environments / caches
+.venv/
+.smoke-venv/
+venv/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Runs / artifacts (do not commit checkpoints, logs, datasets)
+runs/
+outputs/
+logs/
+*.pt
+*.pth
+*.ckpt
+*.bin
+wandb/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
