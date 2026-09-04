@@ -51,7 +51,6 @@ import numpy as np
 # Running this as `python scripts/foo.py` puts scripts/ on sys.path, not the
 # repo root, so `import gavagai` would fail. Make the script work regardless of
 # how it is invoked or what the working directory is.
-import sys
 from pathlib import Path as _Path
 
 sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
@@ -198,10 +197,10 @@ def main():
     print("-" * 114)
     rows = {}
     for task in sorted(found):
-        n_src = sum(1 for _ in found[task])
-        print(f"  scoring {task} ({n_src} file(s))...", end="\r", file=sys.stderr, flush=True)
+        # Plain lines, not carriage returns: notebooks render stderr inline and
+        # a \r would overwrite the table rows being printed to stdout.
+        print(f"[audit] scoring {task}...", file=sys.stderr, flush=True)
         r = audit_task(found[task])
-        print(" " * 60, end="\r", file=sys.stderr)
         if not r:
             continue
         rows[task] = r
