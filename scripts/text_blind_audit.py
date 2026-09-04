@@ -41,7 +41,7 @@ from pathlib import Path
 
 import numpy as np
 
-from gavagai.data.devcv import load_task
+from gavagai.data.devcv import find_tasks, load_source
 
 _OPTION = re.compile(r"\(([A-F])\)")
 
@@ -77,27 +77,25 @@ def n_options(prompt: str) -> int:
     return len(set(_OPTION.findall(prompt)))
 
 
-def discover(roots: list[Path]) -> dict[str, list[tuple[Path, str, str | None]]]:
-    """Find every ``<...>/<task>/data.json`` under the given roots."""
+def discover(roots: list[Path]) -> dict[str, list]:
+    """Find every DevCV task under the given roots, whichever layout they use.
+
+    Handles the flat Hugging Face release (``<task>_test.json`` beside a shared
+    ``images/``) as well as the nested website samples.
+    """
     found: dict[str, list] = {}
     for root in roots:
-        for path in sorted(Path(root).rglob("data.json")):
-            task = path.parent.name
-            split = path.parent.parent.name
-            base = path.parent.parent
-            if split in {"train", "val", "test"}:
-                found.setdefault(task, []).append((base, task, split))
-            else:
-                found.setdefault(task, []).append((path.parent.parent, task, None))
+        for task, sources in find_tasks(root).items():
+            found.setdefault(task, []).extend(sources)
     return found
 
 
 def audit_task(entries) -> dict:
     items = []
-    for base, task, split in entries:
+    for src in entries:
         try:
-            items.extend(load_task(base, task, split))
-        except FileNotFoundError:
+            items.extend(load_source(src))
+        except (FileNotFoundError, ValueError):
             continue
 
     match_ok = match_n = 0
@@ -148,6 +146,13 @@ def main():
     args = ap.parse_args()
 
     found = discover(args.roots)
+    if not found:
+        raise SystemExit(
+            f"no DevCV tasks discovered under {[str(r) for r in args.roots]}.\n"
+            "Expected either <root>/<task>_test.json beside an images/ directory "
+            "(the Hugging Face release) or <root>/[<split>/]<task>/data.json."
+        )
+    print(f"discovered {len(found)} task(s): {', '.join(sorted(found))}\n")
     print(f"{'task':24s} {'n':>4} {'chance':>7} {'position':>18} {'image-match':>20}")
     print("-" * 78)
     rows = {}

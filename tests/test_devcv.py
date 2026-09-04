@@ -13,10 +13,13 @@ from gavagai.data.devcv import (
 )
 
 FIX = Path(__file__).parent / "fixtures"
+# fixtures/ holds BOTH layouts, so tests must name the one they mean.
+NESTED = FIX / "test"      # <root>/<task>/data.json (website samples)
+FLAT_ROOT = FIX / "flat"   # <task>_test.json + images/ (HF release)
 
 
 def test_load_and_parse():
-    items = load_task(FIX, "picture_vocabulary", "test")
+    items = load_task(NESTED, "picture_vocabulary")
     assert len(items) == 1
     it = items[0]
     assert it.n_images == 4
@@ -38,7 +41,7 @@ def test_target_word_patterns(prompt, expected):
 
 
 def test_picture_vocabulary_scoring_is_exact():
-    items = load_task(FIX, "picture_vocabulary", "test")
+    items = load_task(NESTED, "picture_vocabulary")
     # An oracle scorer that always prefers the gold image must score 1.0.
     gold_path = items[0].images[1]
     res = evaluate_picture_vocabulary(items, lambda w, p: 1.0 if p == gold_path else 0.0)
@@ -50,7 +53,7 @@ def test_picture_vocabulary_scoring_is_exact():
 
 
 def test_localization_scoring():
-    items = load_task(FIX, "picture_vocabulary", "test")
+    items = load_task(NESTED, "picture_vocabulary")
     gold = items[0].answer_index  # answer "B" -> index 1 -> "top right"
     assert QUADRANTS[gold] == "top right"
     res = evaluate_localization(items, lambda w, p: QUADRANTS[gold])
@@ -71,10 +74,59 @@ def test_text_blind_matcher_finds_the_duplicate():
     """The audit's core claim in miniature: an exact copy is found without text."""
     from scripts.text_blind_audit import audit_task, image_feature
 
-    items = load_task(FIX, "leftright", "test")
+    items = load_task(NESTED, "leftright")
     feats = [image_feature(p) for p in items[0].images]
     sims = [float(feats[0] @ f) for f in feats[1:]]
     assert int(max(range(3), key=sims.__getitem__)) == items[0].answer_index
 
-    res = audit_task([(FIX / "test", "leftright", None)])
+    from gavagai.data.devcv import find_tasks
+
+    res = audit_task(find_tasks(NESTED)["leftright"])
     assert res["match_acc"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Layout handling.
+#
+# The public Hugging Face release (wsashawn/devcv_toolbox_ego4d) is FLAT --
+# <task>_test.json beside a shared images/ directory -- while the workshop
+# website samples nest one directory per task. An earlier version of this loader
+# only globbed for data.json, so against the real release it discovered nothing
+# and the audit printed an empty table without erroring. These tests pin both.
+# ---------------------------------------------------------------------------
+
+FLAT = FLAT_ROOT
+
+
+def test_discovers_the_flat_huggingface_layout():
+    from gavagai.data.devcv import find_tasks
+
+    tasks = find_tasks(FLAT)
+    assert "leftright" in tasks
+    assert "picture_vocabulary" in tasks, "pv_test.json must map to picture_vocabulary"
+    assert tasks["leftright"][0].split == "test"
+
+
+def test_flat_layout_resolves_images_against_the_dataset_root():
+    """Records say 'images/pv/0.jpeg', relative to the root, not to the JSON."""
+    items = load_task(FLAT, "pv")
+    assert len(items) == 1
+    assert all(p.exists() for p in items[0].images), items[0].images
+
+
+def test_either_task_spelling_loads_the_same_data():
+    assert len(load_task(FLAT, "pv")) == len(load_task(FLAT, "picture_vocabulary"))
+
+
+def test_nested_layout_still_works():
+    items = load_task(NESTED, "leftright")
+    assert len(items) == 1 and all(p.exists() for p in items[0].images)
+
+
+def test_missing_task_names_what_was_actually_found():
+    """A bad task name should report the alternatives, not just fail."""
+    import pytest
+
+    with pytest.raises(FileNotFoundError) as e:
+        load_task(FLAT, "no_such_task")
+    assert "picture_vocabulary" in str(e.value)

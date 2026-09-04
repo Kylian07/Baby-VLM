@@ -28,6 +28,7 @@ from gavagai.data.corpora import UNK, WordTokenizer, tokenize
 from gavagai.data.devcv import (
     evaluate_localization,
     evaluate_picture_vocabulary,
+    find_tasks,
     load_task,
     slot_to_quadrant,
 )
@@ -97,13 +98,18 @@ def main():
     model.load_state_dict(state["model"])
     model.eval()
 
+    available = find_tasks(args.root)
+    if not available:
+        raise SystemExit(f"no DevCV tasks found under {args.root}")
+    print(f"  discovered: {', '.join(sorted(available))}")
+
     scorer = Scorer(model, tok, device, cfg.image_size)
     out = {}
     for task in args.tasks:
         try:
             items = load_task(args.root, task, args.split)
-        except FileNotFoundError:
-            print(f"  {task}: not found under {args.root}, skipping")
+        except FileNotFoundError as e:
+            print(f"  {task}: {e}")
             continue
         if task.startswith("local"):
             res = evaluate_localization(items, scorer.quadrant)

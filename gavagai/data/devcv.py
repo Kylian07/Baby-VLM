@@ -1,7 +1,23 @@
 """Loader and zero-shot evaluators for DevCV-Toolbox tasks.
 
-DevCV Toolbox (Wang et al., CVPR 2026) stores every task as a list of LLaVA-style
-conversations::
+DevCV Toolbox (Wang et al., CVPR 2026) ships in more than one directory layout,
+so discovery here is deliberately layout-agnostic.  The public Hugging Face
+release (``wsashawn/devcv_toolbox_ego4d``) is **flat**::
+
+    data/Ego4D/
+      pv_test.json  leftright_test.json  localize_test.json  ...
+      images/
+
+while the samples published on the workshop website nest one directory per
+task::
+
+    <root>/[<split>/]<task>/data.json
+
+Both are handled by :func:`find_tasks`.  Image paths inside a record are
+resolved against several candidate roots, because whether they are relative to
+the JSON file or to the dataset root differs between the two layouts.
+
+Every task is a list of LLaVA-style conversations::
 
     {"id": ...,
      "conversations": [{"from": "human", "value": "<image>... prompt"},
@@ -40,6 +56,94 @@ _WHICH_IS = re.compile(r"which is (?:a |an |the )?([a-z][a-z \-]*?)\s*[.?]", re.
 _LETTERS = ["A", "B", "C", "D", "E", "F"]
 QUADRANTS = ["top left", "top right", "bottom left", "bottom right"]
 
+# The flat release abbreviates some task names relative to the website samples.
+# Callers may use either spelling.
+TASK_ALIASES = {
+    "pv": "picture_vocabulary",
+    "picture_vocab": "picture_vocabulary",
+    "picture_vocab_selected": "picture_vocabulary",
+    "vdr_binary": "vdr-binary",
+    "vdr_open": "vdr-open",
+    "localise": "localize",
+    "spatial": "spatialdetails",
+}
+
+
+def canonical_task(name: str) -> str:
+    """Map a task name onto its canonical spelling."""
+    return TASK_ALIASES.get(name, name)
+
+
+@dataclass
+class TaskSource:
+    """One task's JSON file plus where to look for its images."""
+
+    name: str
+    path: Path
+    image_roots: list[Path]
+    split: str | None = None
+
+    @property
+    def canonical(self) -> str:
+        return canonical_task(self.name)
+
+
+def find_tasks(root: str | Path) -> dict[str, list[TaskSource]]:
+    """Discover every DevCV task under ``root``, whichever layout it uses.
+
+    Returns a mapping from canonical task name to the sources found for it.
+    """
+    root = Path(root)
+    out: dict[str, list[TaskSource]] = {}
+
+    def add(src: TaskSource) -> None:
+        out.setdefault(src.canonical, []).append(src)
+
+    # Layout A: <root>/[<split>/]<task>/data.json
+    for path in sorted(root.rglob("data.json")):
+        task = path.parent.name
+        parent = path.parent.parent
+        split = parent.name if parent.name in {"train", "val", "test"} else None
+        add(TaskSource(task, path, _image_roots(path, root), split))
+
+    # Layout B: <root>/<task>[_<split>].json  (the public Hugging Face release)
+    for path in sorted(root.rglob("*.json")):
+        if path.name == "data.json" or path.parent.name == ".cache":
+            continue
+        stem = path.stem
+        split = None
+        for suffix in ("_test", "_val", "_train"):
+            if stem.endswith(suffix):
+                stem, split = stem[: -len(suffix)], suffix[1:]
+                break
+        add(TaskSource(stem, path, _image_roots(path, root), split))
+
+    return out
+
+
+def _image_roots(json_path: Path, root: Path) -> list[Path]:
+    """Candidate bases for resolving a record's relative image paths.
+
+    Ordered most- to least-specific; the first one where the file actually
+    exists wins.  This is what makes the loader work for both layouts without
+    the caller having to know which it has.
+    """
+    cands = [json_path.parent, json_path.parent.parent, root]
+    seen, out = set(), []
+    for c in cands:
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def _resolve(rel: str, roots: list[Path]) -> Path:
+    for r in roots:
+        p = r / rel
+        if p.exists():
+            return p
+    return roots[0] / rel  # keep a path for the error message
+
 
 @dataclass
 class DevCVItem:
@@ -59,20 +163,13 @@ class DevCVItem:
         return _LETTERS.index(a) if a in _LETTERS else None
 
 
-def load_task(root: str | Path, task: str, split: str | None = None) -> list[DevCVItem]:
-    """Load one task directory into ``DevCVItem`` records.
-
-    Handles both layouts in the wild: ``<root>/<split>/<task>/data.json`` and
-    ``<root>/<task>/data.json``.
-    """
-    root = Path(root)
-    base = root / split / task if split else root / task
-    path = base / "data.json"
-    if not path.exists():
-        raise FileNotFoundError(f"no data.json under {base}")
-
+def load_source(src: TaskSource) -> list[DevCVItem]:
+    """Read one discovered task file into ``DevCVItem`` records."""
     items = []
-    for rec in json.loads(path.read_text()):
+    payload = json.loads(src.path.read_text())
+    if isinstance(payload, dict):  # some dumps wrap the list
+        payload = payload.get("data") or payload.get("items") or []
+    for rec in payload:
         convs = rec.get("conversations", [])
         human = next((c["value"] for c in convs if c.get("from") == "human"), "")
         gpt = next((c["value"] for c in convs if c.get("from") == "gpt"), "")
@@ -84,9 +181,26 @@ def load_task(root: str | Path, task: str, split: str | None = None) -> list[Dev
                 item_id=str(rec.get("id", len(items))),
                 prompt=human,
                 answer=str(gpt),
-                images=[base / p for p in imgs],
+                images=[_resolve(p, src.image_roots) for p in imgs],
             )
         )
+    return items
+
+
+def load_task(root: str | Path, task: str, split: str | None = None) -> list[DevCVItem]:
+    """Load one task by name, from whichever layout ``root`` happens to use."""
+    tasks = find_tasks(root)
+    want = canonical_task(task)
+    sources = tasks.get(want, [])
+    if split is not None:
+        sources = [s for s in sources if s.split == split] or sources
+    if not sources:
+        raise FileNotFoundError(
+            f"task {task!r} not found under {root}. Discovered: {sorted(tasks)}"
+        )
+    items: list[DevCVItem] = []
+    for s in sources:
+        items.extend(load_source(s))
     return items
 
 

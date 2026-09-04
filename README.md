@@ -119,6 +119,28 @@ scripts/
 tests/          executable checks for every proposition in METHOD.md
 ```
 
+## Running on Kaggle
+
+The evaluation data is on **Hugging Face, not Kaggle** — do not use the "Add Data"
+sidebar. Open `notebooks/kaggle_gavagai.ipynb` and set:
+
+| Setting | Value |
+|---|---|
+| Accelerator | GPU T4 ×2 — *only needed for Section 5* |
+| Internet | **ON** (required for the download; Kaggle needs a phone-verified account) |
+
+Sections 1–4 (including the benchmark audit) need **no GPU at all** — run them in a
+CPU-only session and keep your 30 GPU-h/week for training. The datasets:
+
+| Purpose | Hugging Face repo |
+|---|---|
+| Evaluation (the audit) | `wsashawn/devcv_toolbox_ego4d` |
+| Instruction tuning (optional) | `wsashawn/babyllava_v2_instruction_ft_Ego4D` |
+| Official checkpoints (optional) | `wsashawn/babyllava_v2_{vision_backbone,phase2,instruction_ft}` |
+| Training corpus | none — `--data synthetic` needs no download |
+
+SAYCam and BabyView are Databrary-gated and are not required for anything here.
+
 ## Quickstart
 
 ```bash
