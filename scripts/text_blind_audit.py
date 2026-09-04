@@ -42,6 +42,7 @@ import argparse
 import json
 import math
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -197,7 +198,10 @@ def main():
     print("-" * 114)
     rows = {}
     for task in sorted(found):
+        n_src = sum(1 for _ in found[task])
+        print(f"  scoring {task} ({n_src} file(s))...", end="\r", file=sys.stderr, flush=True)
         r = audit_task(found[task])
+        print(" " * 60, end="\r", file=sys.stderr)
         if not r:
             continue
         rows[task] = r
