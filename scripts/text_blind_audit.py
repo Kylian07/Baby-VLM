@@ -108,6 +108,7 @@ def audit_task(entries) -> dict:
 
     match_ok = match_n = 0
     golds, opt_counts = [], []
+    skipped = Counter()  # why the matcher did not apply, for diagnosis
     for it in items:
         k = n_options(it.prompt)
         gold = it.answer_index
@@ -120,12 +121,15 @@ def audit_task(entries) -> dict:
         if it.n_images == k + 1:
             try:
                 feats = [image_feature(p) for p in it.images]
-            except Exception:
+            except Exception as e:
+                skipped[f"image load failed: {type(e).__name__}"] += 1
                 continue
             q = feats[0]
             sims = [float(q @ f) for f in feats[1:]]
             match_ok += int(int(np.argmax(sims)) == gold)
             match_n += 1
+        else:
+            skipped[f"n_images={it.n_images} != n_options+1={k + 1}"] += 1
 
     if not golds:
         return {}
@@ -138,6 +142,8 @@ def audit_task(entries) -> dict:
         "position_acc": pos_ok / len(golds),
         "position_ci": wilson(pos_ok, len(golds)),
     }
+    if skipped:
+        out["match_skipped"] = dict(skipped.most_common(3))
     if match_n:
         out |= {
             "match_acc": match_ok / match_n,
@@ -161,8 +167,8 @@ def main():
             "(the Hugging Face release) or <root>/[<split>/]<task>/data.json."
         )
     print(f"discovered {len(found)} task(s): {', '.join(sorted(found))}\n")
-    print(f"{'task':24s} {'n':>4} {'chance':>7} {'position':>18} {'image-match':>20}")
-    print("-" * 78)
+    print(f"{'task':24s} {'n':>5} {'chance':>7} {'position':>18}  {'image-match'}")
+    print("-" * 92)
     rows = {}
     for task in sorted(found):
         r = audit_task(found[task])
@@ -170,12 +176,14 @@ def main():
             continue
         rows[task] = r
         pos = f"{r['position_acc']:.2f} [{r['position_ci'][0]:.2f},{r['position_ci'][1]:.2f}]"
-        mat = (
-            f"{r['match_acc']:.2f} [{r['match_ci'][0]:.2f},{r['match_ci'][1]:.2f}] n={r['match_n']}"
-            if "match_acc" in r
-            else "n/a"
-        )
-        print(f"{task:24s} {r['n_items']:>4} {r['chance']:>7.2f} {pos:>18} {mat:>20}")
+        if "match_acc" in r:
+            mat = f"{r['match_acc']:.2f} [{r['match_ci'][0]:.2f},{r['match_ci'][1]:.2f}] n={r['match_n']}"
+        elif "match_skipped" in r:
+            why = next(iter(r["match_skipped"]))
+            mat = f"n/a ({why})"
+        else:
+            mat = "n/a"
+        print(f"{task:24s} {r['n_items']:>5} {r['chance']:>7.2f} {pos:>18}  {mat}")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(rows, indent=2))
