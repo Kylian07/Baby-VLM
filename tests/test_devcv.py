@@ -207,3 +207,44 @@ def test_ambiguity_broken_by_a_matching_path_tail(tmp_path):
     items = load_task(tmp_path, "t")
     assert items[0].images[0].exists()
     assert items[0].images[0].parent.name == "optA"
+
+
+def _matching_item(tmp_path, task, option_files, gold):
+    """Build one 'query + 3 options' item with the given option filenames."""
+    import json as _json
+
+    d = tmp_path / "images" / task
+    d.mkdir(parents=True, exist_ok=True)
+    for n in {"query.jpg", *option_files}:
+        if not (d / n).exists():
+            (d / n).write_bytes(n.encode())
+    imgs = [f"images/{task}/query.jpg"] + [f"images/{task}/{n}" for n in option_files]
+    (tmp_path / f"{task}_test.json").write_text(_json.dumps([{
+        "id": "0", "image": imgs,
+        "conversations": [
+            {"from": "human", "value": "<image> same as this? (A) <image> (B) <image> (C) <image>"},
+            {"from": "gpt", "value": gold}]}]))
+
+
+def test_duplicate_file_baseline_detects_a_repeated_query(tmp_path):
+    """If exactly one option is the same file as the query, that is answerable
+    from filenames alone -- the task then measures bookkeeping, not perception."""
+    from scripts.text_blind_audit import audit_task
+
+    from gavagai.data.devcv import find_tasks
+
+    _matching_item(tmp_path, "t", ["query.jpg", "b.jpg", "c.jpg"], gold="A")
+    r = audit_task(find_tasks(tmp_path)["t"])
+    assert r["dup_n"] == 1 and r["dup_acc"] == 1.0
+
+
+def test_all_options_identical_is_reported_as_degenerate(tmp_path):
+    """Every option the same file as the query: undecidable from the release."""
+    from scripts.text_blind_audit import audit_task
+
+    from gavagai.data.devcv import find_tasks
+
+    _matching_item(tmp_path, "t", ["query.jpg", "query.jpg", "query.jpg"], gold="B")
+    r = audit_task(find_tasks(tmp_path)["t"])
+    assert r.get("degenerate") == 1
+    assert "dup_acc" not in r, "must not score an undecidable item"

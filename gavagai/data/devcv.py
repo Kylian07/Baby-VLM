@@ -183,11 +183,19 @@ def _resolve(rel: str, roots: list[Path]) -> Path:
         if len(hits) == 1:
             return hits[0]
         if len(hits) > 1:
-            # Ambiguous: prefer a hit whose tail matches more of the given path.
+            # Ambiguous by basename. Disambiguate on the longest suffix of the
+            # record's path that still picks out exactly one file. Matching the
+            # whole path fails in practice because releases embed the authors'
+            # own prefix (e.g. "dataset/Ego4D/...") which differs from wherever
+            # the user downloaded to, so we shorten until it is decisive.
             parts = tuple(Path(rel).parts)
-            exact = [h for h in hits if tuple(h.parts[-len(parts):]) == parts]
-            if len(exact) == 1:
-                return exact[0]
+            for k in range(len(parts), 1, -1):
+                tail = parts[-k:]
+                exact = [h for h in hits if tuple(h.parts[-k:]) == tail]
+                if len(exact) == 1:
+                    return exact[0]
+                if not exact:
+                    continue
             break  # genuinely ambiguous -- do not guess
 
     return roots[0] / rel  # non-existent; caller reports it as unresolved

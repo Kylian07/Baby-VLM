@@ -11,6 +11,12 @@ the text:
     option most similar to the query image, using a deliberately weak feature
     (32x32 luminance + RGB histogram).  No training, no language, no network.
 
+``duplicate``
+    Answer with whichever option is the *same file* as the query image.  This
+    needs no pixels at all -- only filenames.  If a task is solvable this way it
+    is not measuring perception, and a model that has learned to exploit it is
+    not demonstrating what the task claims.
+
 ``position``
     Always answer the most frequent gold letter for that task.  Catches
     answer-position imbalance.
@@ -107,6 +113,7 @@ def audit_task(entries) -> dict:
             continue
 
     match_ok = match_n = 0
+    dup_ok = dup_n = degenerate = 0
     golds, opt_counts = [], []
     skipped = Counter()  # why the matcher did not apply, for diagnosis
     for it in items:
@@ -119,6 +126,14 @@ def audit_task(entries) -> dict:
         # Matching baseline applies when there is a query image plus one image
         # per option: images = [query, optA, optB, ...].
         if it.n_images == k + 1:
+            # Duplicate-file baseline: does one option repeat the query image?
+            query, options = it.images[0], it.images[1:]
+            same = [i for i, o in enumerate(options) if o == query]
+            if len(same) == len(options) and options:
+                degenerate += 1      # every option repeats the query: undecidable
+            elif len(same) == 1:
+                dup_ok += int(same[0] == gold)
+                dup_n += 1
             try:
                 feats = [image_feature(p) for p in it.images]
             except Exception:
@@ -145,6 +160,16 @@ def audit_task(entries) -> dict:
     }
     if skipped:
         out["match_skipped"] = dict(skipped.most_common(3))
+    if degenerate:
+        out["degenerate"] = degenerate
+        out["degenerate_frac"] = degenerate / len(golds)
+    if dup_n:
+        out |= {
+            "dup_acc": dup_ok / dup_n,
+            "dup_n": dup_n,
+            "dup_ci": wilson(dup_ok, dup_n),
+            "dup_coverage": dup_n / len(golds),
+        }
     if match_n:
         out |= {
             "match_acc": match_ok / match_n,
@@ -168,8 +193,8 @@ def main():
             "(the Hugging Face release) or <root>/[<split>/]<task>/data.json."
         )
     print(f"discovered {len(found)} task(s): {', '.join(sorted(found))}\n")
-    print(f"{'task':24s} {'n':>5} {'chance':>7} {'position':>18}  {'image-match'}")
-    print("-" * 92)
+    print(f"{'task':24s} {'n':>5} {'chance':>7} {'position':>17} {'dup-file':>22}  {'image-match'}")
+    print("-" * 114)
     rows = {}
     for task in sorted(found):
         r = audit_task(found[task])
@@ -184,11 +209,26 @@ def main():
             mat = f"n/a ({why})"
         else:
             mat = "n/a"
-        print(f"{task:24s} {r['n_items']:>5} {r['chance']:>7.2f} {pos:>18}  {mat}")
+        if "dup_acc" in r:
+            dup = (f"{r['dup_acc']:.2f} [{r['dup_ci'][0]:.2f},{r['dup_ci'][1]:.2f}]"
+                   f" c={r['dup_coverage']:.0%}")
+        elif "degenerate" in r:
+            dup = f"ALL dup ({r['degenerate_frac']:.0%})"
+        else:
+            dup = "-"
+        print(f"{task:24s} {r['n_items']:>5} {r['chance']:>7.2f} {pos:>17} {dup:>22}  {mat}")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(rows, indent=2))
     print(f"\nwrote {args.out}")
+    degen = {t: r for t, r in rows.items() if r.get("degenerate")}
+    if degen:
+        print("\nDEGENERATE ITEMS: every option is the same file as the query, so the")
+        print("item cannot be answered from the released files at all (any")
+        print("distinguishing transform must be applied by the eval harness):")
+        for t, r in degen.items():
+            print(f"  {t}: {r['degenerate']}/{r['n_items']} ({r['degenerate_frac']:.0%})")
+
     print(
         "\nNOTE: on the bundled website samples n is tiny (single digits per task).\n"
         "Wilson intervals are reported for exactly that reason.  Run against the\n"
